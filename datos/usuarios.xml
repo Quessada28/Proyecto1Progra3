@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Usuario administrador inicial, para poder entrar la primera vez. -->
+<usuarios>
+    <usuario>
+        <id>admin</id>
+        <clave>admin</clave>
+        <rol>ADMIN</rol>
+    </usuario>
+</usuarios>
