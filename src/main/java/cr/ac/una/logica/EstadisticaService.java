@@ -1,49 +1,85 @@
 package cr.ac.una.logica;
 
+import cr.ac.una.datos.CategoriaXmlDao;
+import cr.ac.una.datos.RecursoXmlDao;
 import cr.ac.una.datos.ReservaXmlDao;
+import cr.ac.una.modelo.Categoria;
+import cr.ac.una.modelo.Recurso;
+import cr.ac.una.modelo.Reserva;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Funcionalidad 8 (20% de la nota).
- *
- * Se devuelven Map ordenados (LinkedHashMap) porque de ahi salen las DOS cosas
- * que pide el enunciado: la tabla y el grafico de barras (JFreeChart).
- */
 public class EstadisticaService {
 
     private final ReservaXmlDao reservaDao;
+    private final RecursoXmlDao recursoDao;
+    private final CategoriaXmlDao categoriaDao;
 
     public EstadisticaService() {
-        this.reservaDao = new ReservaXmlDao();
+        this(new ReservaXmlDao(), new RecursoXmlDao(), new CategoriaXmlDao());
     }
 
-    /**
-     * Recursos reservados en un periodo:
-     *   clave  = descripcion de la categoria
-     *   valor  = cuantos recursos de esa categoria se reservaron en el periodo
-     * Se cuenta por recurso asignado, no por reserva: si una reserva pidio
-     * 2 laptops, la categoria "Laptop windows" suma 2.
-     */
+    public EstadisticaService(ReservaXmlDao reservaDao, RecursoXmlDao recursoDao, CategoriaXmlDao categoriaDao) {
+        this.reservaDao = reservaDao;
+        this.recursoDao = recursoDao;
+        this.categoriaDao = categoriaDao;
+    }
+
     public Map<String, Integer> recursosPorCategoria(LocalDate desde, LocalDate hasta) {
-        // TODO
-        return null;
+        validarPeriodo(desde, hasta);
+        Map<String, Integer> conteo = new LinkedHashMap<>();
+        for (Reserva reserva : reservaDao.listarEntre(desde, hasta)) {
+            if (!reserva.estaActiva()) {
+                continue;
+            }
+            for (String idRecurso : reserva.getIdsRecursos()) {
+                String categoria = categoriaDeRecurso(idRecurso);
+                conteo.merge(categoria, 1, Integer::sum);
+            }
+        }
+        return conteo;
     }
 
-    /**
-     * Actividades por semana:
-     *   clave  = fecha del lunes de la semana en formato ISO (ej "2026-08-03")
-     *   valor  = cuantas actividades (reservas ACTIVAS) caen en esa semana
-     * Deben aparecer todas las semanas del periodo, aunque tengan 0.
-     */
     public Map<String, Integer> actividadesPorSemana(LocalDate desde, LocalDate hasta) {
-        // TODO
-        return null;
+        validarPeriodo(desde, hasta);
+        Map<String, Integer> conteo = new LinkedHashMap<>();
+
+        LocalDate lunes = desde.with(DayOfWeek.MONDAY);
+        while (!lunes.isAfter(hasta)) {
+            conteo.put(lunes.toString(), 0);
+            lunes = lunes.plusWeeks(1);
+        }
+
+        for (Reserva reserva : reservaDao.listarEntre(desde, hasta)) {
+            if (!reserva.estaActiva()) {
+                continue;
+            }
+            String clave = reserva.getFecha().with(DayOfWeek.MONDAY).toString();
+            conteo.merge(clave, 1, Integer::sum);
+        }
+        return conteo;
     }
 
-    /** Validacion comun: ambas fechas obligatorias y desde <= hasta. */
     public void validarPeriodo(LocalDate desde, LocalDate hasta) {
-        // TODO
+        if (desde == null) {
+            throw new ServicioException("La fecha Desde es obligatoria.");
+        }
+        if (hasta == null) {
+            throw new ServicioException("La fecha Hasta es obligatoria.");
+        }
+        if (desde.isAfter(hasta)) {
+            throw new ServicioException("La fecha Desde no puede ser posterior a la fecha Hasta.");
+        }
+    }
+
+    private String categoriaDeRecurso(String idRecurso) {
+        return recursoDao.buscarPorId(idRecurso)
+                .map(Recurso::getIdCategoria)
+                .flatMap(categoriaDao::buscarPorId)
+                .map(Categoria::getDescripcion)
+                .orElse("Sin categoria");
     }
 }

@@ -1,10 +1,7 @@
 package cr.ac.una.modelo;
 
-/**
- * Unidad fisica reservable (funcionalidad 5). Ejemplo: "Laptop #238715"
- * de la categoria "Laptop windows 11".
- * El id lo digita el administrador (numero de activo), no es autogenerado.
- */
+import java.util.Objects;
+
 public class Recurso {
 
     private String id;
@@ -15,7 +12,9 @@ public class Recurso {
     }
 
     public Recurso(String id, String idCategoria, String descripcion) {
-        // TODO
+        this.id = id;
+        this.idCategoria = idCategoria;
+        this.descripcion = descripcion;
     }
 
     public String getId() { return id; }
@@ -27,8 +26,23 @@ public class Recurso {
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
     @Override
+    public boolean equals(Object otro) {
+        if (this == otro) {
+            return true;
+        }
+        if (!(otro instanceof Recurso)) {
+            return false;
+        }
+        return Objects.equals(id, ((Recurso) otro).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
     public String toString() {
-        // TODO
-        return null;
+        return descripcion == null ? id : descripcion;
     }
 }

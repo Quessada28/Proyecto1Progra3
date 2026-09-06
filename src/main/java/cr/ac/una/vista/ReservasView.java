@@ -1,146 +1,249 @@
 package cr.ac.una.vista;
 
 import cr.ac.una.modelo.Categoria;
-import javax.swing.*;
+import cr.ac.una.util.Formatos;
+
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * VISTA de la pestana "Reservas" (funcionalidad 2, 25% de la nota).
- * Solo la ve un usuario tipo FUNCIONARIO.
- *
- * Se divide en dos zonas, igual que la captura del enunciado:
- *
- *   1) "Nueva reserva" (JPanel con TitledBorder)
- *      Frase + boton Extraer (IA)  |  Actividad  |  Fecha (SelectorFecha)
- *      Hora inicio / Hora fin (JComboBox con Formatos.horasDelDia())
- *      Categorias requeridas: JList con SELECCION MULTIPLE
- *      Botones: Reservar / Cancelar reserva seleccionada / Limpiar
- *
- *   2) "Mis reservas" (JTable + boton Imprimir)
- *      Columnas: Id | Actividad | Fecha | Horario | Recursos | Estado
- *
- * OJO CON EL JList DE CATEGORIAS: el usuario ve la descripcion pero el
- * controlador necesita los IDS. Por eso el modelo del JList guarda objetos
- * Categoria completos (Categoria.toString() devuelve la descripcion) y
- * getCategoriasSeleccionadas() devuelve la lista de ids.
- */
 public class ReservasView extends JPanel {
 
-    private JTextArea txtFrase;
-    private JButton btnExtraer;
+    private static final String[] COLUMNAS =
+            {"Id", "Actividad", "Fecha", "Horario", "Recursos", "Estado"};
 
-    private JTextField txtActividad;
-    private SelectorFecha selectorFecha;
-    private JComboBox<String> cmbHoraInicio;
-    private JComboBox<String> cmbHoraFin;
-    private JList<Categoria> listaCategorias;
-    private DefaultListModel<Categoria> modeloCategorias;
+    private final JTextArea txtFrase = new JTextArea(3, 40);
+    private final JButton btnExtraer = ComponentesUI.boton("Extraer IA");
 
-    private JButton btnReservar;
-    private JButton btnCancelarReserva;
-    private JButton btnLimpiar;
+    private final JTextField txtActividad = ComponentesUI.campo(30);
+    private final SelectorFecha selectorFecha = new SelectorFecha();
+    private final JComboBox<String> cmbHoraInicio = new JComboBox<>(Formatos.horasDelDia());
+    private final JComboBox<String> cmbHoraFin = new JComboBox<>(Formatos.horasDelDia());
+    private final DefaultListModel<Categoria> modeloCategorias = new DefaultListModel<>();
+    private final JList<Categoria> listaCategorias = new JList<>(modeloCategorias);
 
-    private JTable tablaReservas;
-    private DefaultTableModel modeloReservas;
-    private JButton btnImprimir;
+    private final JButton btnReservar = ComponentesUI.boton("Reservar");
+    private final JButton btnCancelarReserva = ComponentesUI.boton("Cancelar reserva seleccionada");
+    private final JButton btnLimpiar = ComponentesUI.boton("Limpiar");
+
+    private final DefaultTableModel modeloReservas = ComponentesUI.modeloDeSoloLectura(COLUMNAS);
+    private final JTable tablaReservas = ComponentesUI.tablaDeSoloLectura(modeloReservas);
+    private final JButton btnImprimir = ComponentesUI.boton("Imprimir");
 
     public ReservasView() {
-        // TODO: setLayout(new BorderLayout()), armarPanelNuevaReserva() al norte,
-        //       armarPanelMisReservas() al centro
+        setLayout(new BorderLayout(0, 8));
+        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        add(armarPanelNuevaReserva(), BorderLayout.NORTH);
+        add(armarPanelMisReservas(), BorderLayout.CENTER);
     }
 
     private JPanel armarPanelNuevaReserva() {
-        // TODO
-        return null;
+        JPanel panel = ComponentesUI.panelConTitulo("Nueva reserva");
+
+        txtFrase.setLineWrap(true);
+        txtFrase.setWrapStyleWord(true);
+        JScrollPane scrollFrase = new JScrollPane(txtFrase);
+        scrollFrase.setPreferredSize(new Dimension(520, 56));
+
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Frase"), 0, 0);
+        GridBagConstraints frase = ComponentesUI.restricciones(1, 0);
+        frase.gridwidth = 3;
+        panel.add(scrollFrase, frase);
+        ComponentesUI.agregar(panel, btnExtraer, 4, 0);
+
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Actividad"), 0, 1);
+        ComponentesUI.agregar(panel, txtActividad, 1, 1, 3);
+
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Fecha"), 0, 2);
+        ComponentesUI.agregar(panel, selectorFecha, 1, 2);
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Hora inicio"), 2, 2);
+        ComponentesUI.agregar(panel, cmbHoraInicio, 3, 2);
+
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Categorias requeridas"), 0, 3);
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("(seleccion multiple)"), 1, 3);
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Hora fin"), 2, 3);
+        ComponentesUI.agregar(panel, cmbHoraFin, 3, 3);
+
+        listaCategorias.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        listaCategorias.setVisibleRowCount(4);
+        JScrollPane scrollCategorias = new JScrollPane(listaCategorias);
+        scrollCategorias.setPreferredSize(new Dimension(520, 92));
+        scrollCategorias.setBorder(BorderFactory.createTitledBorder("Categorias"));
+
+        GridBagConstraints categorias = ComponentesUI.restricciones(0, 4);
+        categorias.gridwidth = 5;
+        panel.add(scrollCategorias, categorias);
+
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        botones.add(btnReservar);
+        botones.add(btnCancelarReserva);
+        botones.add(btnLimpiar);
+
+        GridBagConstraints fila = ComponentesUI.restricciones(0, 5);
+        fila.gridwidth = 5;
+        panel.add(botones, fila);
+
+        cmbHoraInicio.setSelectedItem(Formatos.hora12(LocalTime.of(8, 0)));
+        cmbHoraFin.setSelectedItem(Formatos.hora12(LocalTime.of(10, 0)));
+        selectorFecha.setFecha(LocalDate.now());
+        return panel;
     }
 
     private JPanel armarPanelMisReservas() {
-        // TODO: modeloReservas con las columnas; hacer las celdas NO editables
-        //       sobreescribiendo isCellEditable(...) como en el ejemplo del profe
-        return null;
+        JPanel panel = new JPanel(new BorderLayout(8, 4));
+        panel.setBorder(BorderFactory.createTitledBorder("Mis reservas"));
+        panel.add(ComponentesUI.conBarras(tablaReservas, 200), BorderLayout.CENTER);
+
+        JPanel derecha = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 4));
+        derecha.add(btnImprimir);
+        panel.add(derecha, BorderLayout.EAST);
+        return panel;
     }
 
-    // ---- Llenado (lo llama el controlador) ----
-
-    /** Carga el JList de categorias con las que existen en el sistema. */
     public void cargarCategorias(List<Categoria> categorias) {
-        // TODO
+        modeloCategorias.clear();
+        for (Categoria categoria : categorias) {
+            modeloCategorias.addElement(categoria);
+        }
     }
 
-    /** Vuelca las filas ya formateadas en la tabla "Mis reservas". */
     public void cargarReservas(List<String[]> filas) {
-        // TODO: modeloReservas.setRowCount(0) y luego addRow por cada fila
+        ComponentesUI.llenarTabla(modeloReservas, filas);
     }
-
-    // ---- Lectura del formulario ----
 
     public String getFrase() {
-        // TODO
-        return null;
+        return txtFrase.getText().trim();
     }
 
     public String getActividad() {
-        // TODO
-        return null;
+        return txtActividad.getText().trim();
     }
 
-    public SelectorFecha getSelectorFecha() { return selectorFecha; }
-
-    /** Texto de la hora escogida ("8:00 a. m."); el controlador la convierte a LocalTime. */
-    public String getHoraInicio() {
-        // TODO
-        return null;
+    public LocalDate getFecha() {
+        return selectorFecha.getFecha();
     }
 
-    public String getHoraFin() {
-        // TODO
-        return null;
+    public LocalTime getHoraInicio() {
+        return Formatos.leerHora12((String) cmbHoraInicio.getSelectedItem());
     }
 
-    /** Ids de las categorias marcadas en el JList (seleccion multiple). */
+    public LocalTime getHoraFin() {
+        return Formatos.leerHora12((String) cmbHoraFin.getSelectedItem());
+    }
+
     public List<String> getCategoriasSeleccionadas() {
-        // TODO: listaCategorias.getSelectedValuesList() y sacarle el id a cada una
-        return null;
+        List<String> ids = new ArrayList<>();
+        for (Categoria categoria : listaCategorias.getSelectedValuesList()) {
+            ids.add(categoria.getId());
+        }
+        return ids;
     }
 
-    /** Id de la reserva marcada en la tabla, o null si no hay ninguna marcada. */
     public String getIdReservaSeleccionada() {
-        // TODO: tablaReservas.getSelectedRow() y leer la columna 0
-        return null;
+        int fila = tablaReservas.getSelectedRow();
+        return fila < 0 ? null : (String) modeloReservas.getValueAt(fila, 0);
     }
 
-    // ---- Escritura del formulario (la usa el boton Extraer de la IA) ----
+    public void llenarFormulario(String actividad, LocalDate fecha, LocalTime inicio,
+                                 LocalTime fin, List<String> idsCategorias) {
+        if (actividad != null) {
+            txtActividad.setText(actividad);
+        }
+        if (fecha != null) {
+            selectorFecha.setFecha(fecha);
+        }
+        if (inicio != null) {
+            cmbHoraInicio.setSelectedItem(Formatos.hora12(inicio));
+        }
+        if (fin != null) {
+            cmbHoraFin.setSelectedItem(Formatos.hora12(fin));
+        }
+        seleccionarCategorias(idsCategorias);
+    }
 
-    /** Llena actividad, fecha, horas y marca las categorias que devolvio el LLM. */
-    public void llenarFormulario(String actividad, java.time.LocalDate fecha,
-                                 java.time.LocalTime inicio, java.time.LocalTime fin,
-                                 List<String> idsCategorias) {
-        // TODO: recordar que el usuario puede corregir todo antes de reservar
+    private void seleccionarCategorias(List<String> idsCategorias) {
+        listaCategorias.clearSelection();
+        if (idsCategorias == null || idsCategorias.isEmpty()) {
+            return;
+        }
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < modeloCategorias.size(); i++) {
+            if (idsCategorias.contains(modeloCategorias.get(i).getId())) {
+                indices.add(i);
+            }
+        }
+        int[] seleccion = new int[indices.size()];
+        for (int i = 0; i < indices.size(); i++) {
+            seleccion[i] = indices.get(i);
+        }
+        listaCategorias.setSelectedIndices(seleccion);
     }
 
     public void limpiarFormulario() {
-        // TODO
+        txtFrase.setText("");
+        txtActividad.setText("");
+        selectorFecha.setFecha(LocalDate.now());
+        cmbHoraInicio.setSelectedItem(Formatos.hora12(LocalTime.of(8, 0)));
+        cmbHoraFin.setSelectedItem(Formatos.hora12(LocalTime.of(10, 0)));
+        listaCategorias.clearSelection();
     }
 
     public void mostrarError(String mensaje) {
-        // TODO
+        ComponentesUI.error(this, mensaje);
     }
 
     public void mostrarInfo(String mensaje) {
-        // TODO
+        ComponentesUI.info(this, mensaje);
     }
 
-    /** Confirmacion si/no, para "seguro que desea cancelar la reserva?". */
     public boolean confirmar(String mensaje) {
-        // TODO: JOptionPane.showConfirmDialog(...) == JOptionPane.YES_OPTION
-        return false;
+        return ComponentesUI.confirmar(this, mensaje);
     }
 
-    public JButton getBtnExtraer() { return btnExtraer; }
-    public JButton getBtnReservar() { return btnReservar; }
-    public JButton getBtnCancelarReserva() { return btnCancelarReserva; }
-    public JButton getBtnLimpiar() { return btnLimpiar; }
-    public JButton getBtnImprimir() { return btnImprimir; }
-    public JTable getTablaReservas() { return tablaReservas; }
+    public void setExtraccionEnProceso(boolean enProceso) {
+        btnExtraer.setEnabled(!enProceso);
+        btnExtraer.setText(enProceso ? "Extrayendo..." : "Extraer IA");
+    }
+
+    public JButton getBtnExtraer() {
+        return btnExtraer;
+    }
+
+    public JButton getBtnReservar() {
+        return btnReservar;
+    }
+
+    public JButton getBtnCancelarReserva() {
+        return btnCancelarReserva;
+    }
+
+    public JButton getBtnLimpiar() {
+        return btnLimpiar;
+    }
+
+    public JButton getBtnImprimir() {
+        return btnImprimir;
+    }
+
+    public JTable getTablaReservas() {
+        return tablaReservas;
+    }
 }

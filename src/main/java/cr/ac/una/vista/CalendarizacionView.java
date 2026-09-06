@@ -1,74 +1,124 @@
 package cr.ac.una.vista;
 
 import cr.ac.una.modelo.Categoria;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.time.LocalDate;
 import java.util.List;
 
-/**
- * VISTA de la pestana "Calendarizacion" (funcionalidad 6).
- * La ven ADMIN y FUNCIONARIO.
- *
- * Filtros: Fecha (SelectorFecha) + Categoria + boton Cargar + boton Imprimir.
- * Abajo la matriz: filas = horas del dia, columnas = recursos de esa categoria.
- *
- * La matriz NO se arma aqui: CalendarioService la devuelve ya lista como
- * String[][] y esta vista solo se la pasa al DefaultTableModel. Por eso el
- * modelo se vuelve a crear entero cada vez que se carga (cambian las columnas
- * al cambiar de categoria).
- *
- * Detalle visual del enunciado: las celdas ocupadas salen con fondo amarillo.
- * Eso se logra con un DefaultTableCellRenderer propio que pinta la celda
- * cuando el valor no esta vacio (ver crearRenderer()).
- */
 public class CalendarizacionView extends JPanel {
 
-    private SelectorFecha selectorFecha;
-    private JComboBox<Categoria> cmbCategoria;
-    private JButton btnCargar;
-    private JButton btnImprimir;
+    private static final Color COLOR_OCUPADO = new Color(255, 250, 205);
 
-    private JTable tabla;
-    private DefaultTableModel modelo;
+    private final SelectorFecha selectorFecha = new SelectorFecha();
+    private final JComboBox<Categoria> cmbCategoria = new JComboBox<>();
+    private final JButton btnCargar = ComponentesUI.boton("Cargar");
+    private final JButton btnImprimir = ComponentesUI.boton("Imprimir");
+
+    private DefaultTableModel modelo = ComponentesUI.modeloDeSoloLectura(new String[]{"Hora"});
+    private final JTable tabla = ComponentesUI.tablaDeSoloLectura(modelo);
 
     public CalendarizacionView() {
-        // TODO
+        setLayout(new BorderLayout(0, 8));
+        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        selectorFecha.setFecha(LocalDate.now());
+        tabla.setRowHeight(34);
+        tabla.setDefaultRenderer(Object.class, crearRenderer());
+        add(armarPanelFiltros(), BorderLayout.NORTH);
+
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.setBorder(BorderFactory.createTitledBorder("Calendarizacion de recursos"));
+        contenedor.add(ComponentesUI.conBarras(tabla, 420), BorderLayout.CENTER);
+        add(contenedor, BorderLayout.CENTER);
     }
 
     private JPanel armarPanelFiltros() {
-        // TODO
-        return null;
+        JPanel panel = ComponentesUI.panelConTitulo("Filtros");
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Fecha"), 0, 0);
+        ComponentesUI.agregar(panel, selectorFecha, 1, 0);
+        ComponentesUI.agregar(panel, ComponentesUI.etiqueta("Categoria"), 2, 0);
+        ComponentesUI.agregar(panel, cmbCategoria, 3, 0);
+        ComponentesUI.agregar(panel, btnCargar, 4, 0);
+        ComponentesUI.agregar(panel, btnImprimir, 5, 0);
+        return panel;
+    }
+
+    private DefaultTableCellRenderer crearRenderer() {
+        return new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable tabla, Object valor,
+                                                           boolean seleccionada, boolean enfocada,
+                                                           int fila, int columna) {
+                Component celda = super.getTableCellRendererComponent(
+                        tabla, valor, seleccionada, enfocada, fila, columna);
+                boolean ocupada = columna > 0 && valor != null && !valor.toString().isBlank();
+                if (!seleccionada) {
+                    celda.setBackground(ocupada ? COLOR_OCUPADO : Color.WHITE);
+                }
+                return celda;
+            }
+        };
     }
 
     public void cargarCategorias(List<Categoria> categorias) {
-        // TODO
+        cmbCategoria.removeAllItems();
+        for (Categoria categoria : categorias) {
+            cmbCategoria.addItem(categoria);
+        }
     }
 
-    /** Reemplaza la matriz completa (columnas incluidas). */
     public void cargarMatriz(String[] columnas, String[][] datos) {
-        // TODO: modelo = new DefaultTableModel(datos, columnas) con isCellEditable false,
-        //       tabla.setModel(modelo) y volver a aplicar el renderer
+        modelo = new DefaultTableModel(datos, columnas) {
+            @Override
+            public boolean isCellEditable(int fila, int columna) {
+                return false;
+            }
+        };
+        tabla.setModel(modelo);
+        tabla.setRowHeight(34);
+        tabla.setDefaultRenderer(Object.class, crearRenderer());
     }
 
-    /** Renderer que pinta de amarillo las celdas que tienen una reserva. */
-    private javax.swing.table.DefaultTableCellRenderer crearRenderer() {
-        // TODO
-        return null;
+    public LocalDate getFecha() {
+        return selectorFecha.getFecha();
     }
 
-    public SelectorFecha getSelectorFecha() { return selectorFecha; }
+    public SelectorFecha getSelectorFecha() {
+        return selectorFecha;
+    }
 
-    /** Id de la categoria escogida, o null si no hay ninguna. */
     public String getIdCategoria() {
-        // TODO
-        return null;
+        Categoria seleccionada = (Categoria) cmbCategoria.getSelectedItem();
+        return seleccionada == null ? null : seleccionada.getId();
+    }
+
+    public String getDescripcionCategoria() {
+        Categoria seleccionada = (Categoria) cmbCategoria.getSelectedItem();
+        return seleccionada == null ? "" : seleccionada.getDescripcion();
     }
 
     public void mostrarError(String mensaje) {
-        // TODO
+        ComponentesUI.error(this, mensaje);
     }
 
-    public JButton getBtnCargar() { return btnCargar; }
-    public JButton getBtnImprimir() { return btnImprimir; }
-    public JTable getTabla() { return tabla; }
+    public JButton getBtnCargar() {
+        return btnCargar;
+    }
+
+    public JButton getBtnImprimir() {
+        return btnImprimir;
+    }
+
+    public JTable getTabla() {
+        return tabla;
+    }
 }

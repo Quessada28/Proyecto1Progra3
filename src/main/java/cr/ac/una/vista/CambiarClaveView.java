@@ -1,60 +1,85 @@
 package cr.ac.una.vista;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.GridBagLayout;
 
-/**
- * VISTA del cambio de clave (funcionalidad 1). Es un JDialog MODAL porque
- * se abre encima del login o encima de la ventana principal y hay que
- * esperar a que el usuario termine.
- *
- * Ojo: la clave nueva se pide DOS veces; comparar las dos NO es trabajo de
- * la vista sino del controlador.
- */
 public class CambiarClaveView extends JDialog {
 
-    private JPasswordField txtClaveActual;
-    private JPasswordField txtClaveNueva;
-    private JPasswordField txtClaveNuevaConfirmacion;
-    private JButton btnAceptar;
-    private JButton btnCancelar;
+    private final JPasswordField txtClaveActual = new JPasswordField(16);
+    private final JPasswordField txtClaveNueva = new JPasswordField(16);
+    private final JPasswordField txtClaveNuevaConfirmacion = new JPasswordField(16);
+    private final JButton btnAceptar = ComponentesUI.boton("Aceptar");
+    private final JButton btnCancelar = ComponentesUI.boton("Cancelar");
 
     public CambiarClaveView(Frame padre) {
-        super(padre, "Cambiar Clave", true); // true = modal
-        // TODO: setSize(...), setLocationRelativeTo(padre), inicializarComponentes()
+        super(padre, "Cambiar Clave", true);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setResizable(false);
+        inicializarComponentes();
+        pack();
+        setLocationRelativeTo(padre);
     }
 
     private void inicializarComponentes() {
-        // TODO
+        setLayout(new BorderLayout(0, 8));
+
+        JPanel formulario = new JPanel(new GridBagLayout());
+        formulario.setBorder(BorderFactory.createEmptyBorder(14, 16, 6, 16));
+        ComponentesUI.agregar(formulario, ComponentesUI.etiqueta("Clave Actual"), 0, 0);
+        ComponentesUI.agregar(formulario, txtClaveActual, 1, 0);
+        ComponentesUI.agregar(formulario, ComponentesUI.etiqueta("Clave Nueva"), 0, 1);
+        ComponentesUI.agregar(formulario, txtClaveNueva, 1, 1);
+        ComponentesUI.agregar(formulario, ComponentesUI.etiqueta("Confirmar Clave"), 0, 2);
+        ComponentesUI.agregar(formulario, txtClaveNuevaConfirmacion, 1, 2);
+        add(formulario, BorderLayout.CENTER);
+
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 10));
+        botones.add(btnAceptar);
+        botones.add(btnCancelar);
+        add(botones, BorderLayout.SOUTH);
+
+        getRootPane().setDefaultButton(btnAceptar);
     }
 
     public String getClaveActual() {
-        // TODO
-        return null;
+        return new String(txtClaveActual.getPassword());
     }
 
     public String getClaveNueva() {
-        // TODO
-        return null;
+        return new String(txtClaveNueva.getPassword());
     }
 
     public String getClaveNuevaConfirmacion() {
-        // TODO
-        return null;
+        return new String(txtClaveNuevaConfirmacion.getPassword());
     }
 
     public void limpiar() {
-        // TODO
+        txtClaveActual.setText("");
+        txtClaveNueva.setText("");
+        txtClaveNuevaConfirmacion.setText("");
+        txtClaveActual.requestFocusInWindow();
     }
 
     public void mostrarError(String mensaje) {
-        // TODO
+        ComponentesUI.error(this, mensaje);
     }
 
     public void mostrarInfo(String mensaje) {
-        // TODO
+        ComponentesUI.info(this, mensaje);
     }
 
-    public JButton getBtnAceptar() { return btnAceptar; }
-    public JButton getBtnCancelar() { return btnCancelar; }
+    public JButton getBtnAceptar() {
+        return btnAceptar;
+    }
+
+    public JButton getBtnCancelar() {
+        return btnCancelar;
+    }
 }

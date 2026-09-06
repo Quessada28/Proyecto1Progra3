@@ -1,66 +1,109 @@
 package cr.ac.una.controlador;
 
 import cr.ac.una.logica.CategoriaService;
+import cr.ac.una.logica.ServicioException;
 import cr.ac.una.modelo.Categoria;
 import cr.ac.una.reporte.ReportePdf;
 import cr.ac.una.vista.CategoriasView;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * CONTROLADOR de la pestana Categorias (funcionalidad 4). Solo ADMIN.
- * Mismo molde que FuncionariosControlador.
- *
- * Diferencia: el id es autogenerado. Cuando el campo id de la vista viene
- * vacio es un ALTA (el servicio le pide el id a GeneradorId); cuando trae
- * valor es una MODIFICACION.
- *
- * Antes de borrar conviene revisar si la categoria tiene recursos asociados,
- * porque si no quedan recursos huerfanos apuntando a una categoria que ya
- * no existe.
- */
-public class CategoriasControlador {
+public class CategoriasControlador implements ControladorPestana {
 
     private final CategoriasView vista;
     private final CategoriaService servicio;
-    private final ReportePdf reportePdf;
+    private final ReportePdf reportePdf = new ReportePdf();
 
     public CategoriasControlador(CategoriasView vista, CategoriaService servicio) {
         this.vista = vista;
         this.servicio = servicio;
-        this.reportePdf = new ReportePdf();
-        // TODO: listeners
+
+        this.vista.getBtnBuscar().addActionListener(e -> buscar());
+        this.vista.getBtnGuardar().addActionListener(e -> guardar());
+        this.vista.getBtnBorrar().addActionListener(e -> borrar());
+        this.vista.getBtnLimpiar().addActionListener(e -> vista.limpiarFormulario());
+        this.vista.getBtnImprimir().addActionListener(e -> imprimir());
+        this.vista.getTabla().getSelectionModel().addListSelectionListener(evento -> {
+            if (!evento.getValueIsAdjusting()) {
+                seleccionarDeTabla();
+            }
+        });
     }
 
+    @Override
     public void inicializar() {
-        // TODO
+        refrescar();
+    }
+
+    @Override
+    public void refrescar() {
+        cargarTabla(servicio.listar());
     }
 
     private void buscar() {
-        // TODO
+        cargarTabla(servicio.buscarPorDescripcion(vista.getBuscarDescripcion()));
     }
 
     private void guardar() {
-        // TODO
+        try {
+            String id = vista.getIdFormulario();
+            servicio.guardar(new Categoria(id.isEmpty() ? null : id, vista.getDescripcion()));
+            vista.mostrarInfo("La categoria se guardo correctamente.");
+            vista.limpiarFormulario();
+            inicializar();
+        } catch (ServicioException e) {
+            vista.mostrarError(e.getMessage());
+        }
     }
 
     private void borrar() {
-        // TODO
-    }
-
-    private void limpiar() {
-        // TODO
+        String id = vista.getIdFormulario();
+        if (id.isEmpty()) {
+            vista.mostrarError("Seleccione una categoria del listado.");
+            return;
+        }
+        if (!vista.confirmar("Desea borrar la categoria " + id + "?")) {
+            return;
+        }
+        try {
+            servicio.eliminar(id);
+            vista.mostrarInfo("La categoria se borro correctamente.");
+            vista.limpiarFormulario();
+            inicializar();
+        } catch (ServicioException e) {
+            vista.mostrarError(e.getMessage());
+        }
     }
 
     private void imprimir() {
-        // TODO: reportePdf.deJTable("Listado de Categorias", vista.getTabla(), destino)
+        File destino = reportePdf.pedirDestino(vista, "categorias.pdf");
+        if (destino == null) {
+            return;
+        }
+        try {
+            reportePdf.deJTable("Listado de Categorias", vista.getTabla(), destino);
+            reportePdf.abrir(destino);
+        } catch (ServicioException e) {
+            vista.mostrarError(e.getMessage());
+        }
     }
 
     private void seleccionarDeTabla() {
-        // TODO
+        String id = vista.getIdSeleccionado();
+        if (id == null) {
+            return;
+        }
+        servicio.buscarPorId(id).ifPresent(
+                categoria -> vista.mostrarEnFormulario(categoria.getId(), categoria.getDescripcion()));
     }
 
     private void cargarTabla(List<Categoria> categorias) {
-        // TODO
+        List<String[]> filas = new ArrayList<>();
+        for (Categoria categoria : categorias) {
+            filas.add(new String[]{categoria.getId(), categoria.getDescripcion()});
+        }
+        vista.cargarTabla(filas);
     }
 }

@@ -1,10 +1,7 @@
 package cr.ac.una.modelo;
 
-/**
- * Categoria de recurso (funcionalidad 4). Ejemplos: "Sala para 10 personas",
- * "Laptop windows 11". El id es autogenerado con formato CAT-000001
- * (ver util.GeneradorId).
- */
+import java.util.Objects;
+
 public class Categoria {
 
     private String id;
@@ -14,7 +11,8 @@ public class Categoria {
     }
 
     public Categoria(String id, String descripcion) {
-        // TODO
+        this.id = id;
+        this.descripcion = descripcion;
     }
 
     public String getId() { return id; }
@@ -24,8 +22,23 @@ public class Categoria {
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
     @Override
+    public boolean equals(Object otro) {
+        if (this == otro) {
+            return true;
+        }
+        if (!(otro instanceof Categoria)) {
+            return false;
+        }
+        return Objects.equals(id, ((Categoria) otro).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
     public String toString() {
-        // TODO: devolver la descripcion (es lo que se ve en los JComboBox)
-        return null;
+        return descripcion == null ? "" : descripcion;
     }
 }

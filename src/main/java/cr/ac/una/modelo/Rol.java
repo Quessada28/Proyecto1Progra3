@@ -1,10 +1,18 @@
 package cr.ac.una.modelo;
 
-/**
- * Tipos de usuario del sistema. Determina cuales pestanas se muestran
- * al ingresar (ver PrincipalView).
- */
 public enum Rol {
+
     ADMIN,
-    FUNCIONARIO
+    FUNCIONARIO;
+
+    public static Rol desdeTexto(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return FUNCIONARIO;
+        }
+        try {
+            return Rol.valueOf(texto.trim().toUpperCase());
+        } catch (IllegalArgumentException ignorada) {
+            return FUNCIONARIO;
+        }
+    }
 }

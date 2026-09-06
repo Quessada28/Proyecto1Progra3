@@ -1,60 +1,43 @@
 package cr.ac.una.datos;
 
 import cr.ac.una.modelo.Categoria;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
-/**
- * Persistencia en datos/categorias.xml
- *
- * <categorias>
- *   <categoria><id>CAT-000001</id><descripcion>Sala para 10 personas</descripcion></categoria>
- * </categorias>
- */
-public class CategoriaXmlDao implements Dao<Categoria> {
+public class CategoriaXmlDao extends XmlDao<Categoria> {
 
-    private static final String ARCHIVO = "categorias.xml";
-    private static final String RAIZ = "categorias";
-    private static final String NODO = "categoria";
-
-    @Override
-    public List<Categoria> listar() {
-        // TODO
-        return null;
+    public CategoriaXmlDao() {
+        super("categorias.xml", "categorias", "categoria");
     }
 
     @Override
-    public Optional<Categoria> buscarPorId(String id) {
-        // TODO
-        return Optional.empty();
+    protected Categoria mapear(Element elemento) {
+        return new Categoria(
+                XmlUtil.texto(elemento, "id"),
+                XmlUtil.texto(elemento, "descripcion"));
     }
 
     @Override
-    public void guardar(Categoria categoria) {
-        // TODO
+    protected void escribir(Document doc, Element destino, Categoria categoria) {
+        XmlUtil.agregarHijo(doc, destino, "descripcion", categoria.getDescripcion());
     }
 
     @Override
-    public void eliminar(String id) {
-        // TODO
+    protected String idDe(Categoria categoria) {
+        return categoria.getId();
     }
 
-    /** Busqueda por descripcion (contiene) - funcionalidad 4. */
     public List<Categoria> buscarPorDescripcion(String texto) {
-        // TODO
-        return null;
-    }
-
-    /** Ultimo consecutivo usado, para que GeneradorId arme el siguiente CAT-00000N. */
-    public int ultimoConsecutivo() {
-        // TODO
-        return 0;
-    }
-
-    private Categoria mapear(Element e) {
-        // TODO
-        return null;
+        if (texto == null || texto.isBlank()) {
+            return listar();
+        }
+        String buscado = texto.trim().toLowerCase();
+        return listar().stream()
+                .filter(c -> c.getDescripcion() != null
+                        && c.getDescripcion().toLowerCase().contains(buscado))
+                .collect(Collectors.toList());
     }
 }

@@ -3,29 +3,21 @@ package cr.ac.una.logica;
 import cr.ac.una.datos.CategoriaXmlDao;
 import cr.ac.una.datos.RecursoXmlDao;
 import cr.ac.una.datos.ReservaXmlDao;
+import cr.ac.una.modelo.Categoria;
 import cr.ac.una.modelo.DatosReserva;
+import cr.ac.una.modelo.EstadoReserva;
 import cr.ac.una.modelo.Recurso;
 import cr.ac.una.modelo.Reserva;
 import cr.ac.una.modelo.ResultadoReserva;
+import cr.ac.una.util.GeneradorId;
+import cr.ac.una.util.Validador;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Funcionalidad 2 (25% de la nota): el corazon del sistema.
- *
- * Algoritmo de crear(...):
- *   1. Validar los datos (ver validar()).
- *   2. Para CADA categoria pedida, buscar el PRIMER recurso libre en ese rango.
- *   3. Si alguna categoria se quedo sin recurso libre -> ResultadoReserva.fallo(...)
- *      con la lista de descripciones de esas categorias. NO se guarda nada.
- *   4. Si todas tienen recurso -> armar la Reserva con esos ids, id nuevo,
- *      estado ACTIVA, guardarla y devolver ResultadoReserva.ok(...).
- *
- * Es "todo o nada": no se guardan reservas parciales.
- */
 public class ReservaService {
 
     private final ReservaXmlDao reservaDao;
@@ -33,69 +25,122 @@ public class ReservaService {
     private final CategoriaXmlDao categoriaDao;
 
     public ReservaService() {
-        this.reservaDao = new ReservaXmlDao();
-        this.recursoDao = new RecursoXmlDao();
-        this.categoriaDao = new CategoriaXmlDao();
+        this(new ReservaXmlDao(), new RecursoXmlDao(), new CategoriaXmlDao());
     }
 
-    /** Constructor para pruebas unitarias con DAOs falsos. */
     public ReservaService(ReservaXmlDao reservaDao, RecursoXmlDao recursoDao, CategoriaXmlDao categoriaDao) {
         this.reservaDao = reservaDao;
         this.recursoDao = recursoDao;
         this.categoriaDao = categoriaDao;
     }
 
-    /** Reservas del funcionario logueado (tabla "Mis reservas"). */
     public List<Reserva> misReservas(String idFuncionario) {
-        // TODO
-        return null;
+        List<Reserva> reservas = reservaDao.listarPorFuncionario(idFuncionario);
+        reservas.sort((a, b) -> {
+            int porFecha = b.getFecha().compareTo(a.getFecha());
+            return porFecha != 0 ? porFecha : b.getHoraInicio().compareTo(a.getHoraInicio());
+        });
+        return reservas;
     }
 
-    /** Intenta registrar la reserva. Ver el algoritmo descrito arriba. */
     public ResultadoReserva crear(String idFuncionario, DatosReserva datos) {
-        // TODO
-        return null;
+        Validador.requerido(idFuncionario, "Funcionario");
+        validar(datos);
+
+        List<String> asignados = new ArrayList<>();
+        List<String> noDisponibles = new ArrayList<>();
+
+        for (String idCategoria : datos.getIdsCategorias()) {
+            Optional<Recurso> libre = primerRecursoDisponible(
+                    idCategoria, datos.getFecha(), datos.getHoraInicio(), datos.getHoraFin(), asignados);
+            if (libre.isPresent()) {
+                asignados.add(libre.get().getId());
+            } else {
+                noDisponibles.add(descripcionCategoria(idCategoria));
+            }
+        }
+
+        if (!noDisponibles.isEmpty()) {
+            return ResultadoReserva.fallo(noDisponibles);
+        }
+
+        Reserva reserva = new Reserva(
+                GeneradorId.siguienteReserva(reservaDao.ultimoConsecutivo()),
+                idFuncionario,
+                datos.getActividad().trim(),
+                datos.getFecha(),
+                datos.getHoraInicio(),
+                datos.getHoraFin(),
+                asignados,
+                EstadoReserva.ACTIVA);
+        reservaDao.guardar(reserva);
+        return ResultadoReserva.ok(reserva);
     }
 
-    /**
-     * Cancela una reserva futura: cambia el estado a CANCELADA.
-     * Al quedar CANCELADA, sus recursos dejan de contar como ocupados, o sea
-     * quedan liberados automaticamente (por eso estaDisponible solo mira ACTIVAS).
-     * Validar: la reserva existe, es del funcionario que la pide, es futura y esta ACTIVA.
-     */
     public void cancelar(String idReserva, String idFuncionario) {
-        // TODO
+        Reserva reserva = reservaDao.buscarPorId(idReserva)
+                .orElseThrow(() -> new ServicioException("La reserva indicada no existe."));
+        if (!reserva.getIdFuncionario().equals(idFuncionario)) {
+            throw new ServicioException("Solo se pueden cancelar las reservas propias.");
+        }
+        if (!reserva.estaActiva()) {
+            throw new ServicioException("La reserva ya estaba cancelada.");
+        }
+        if (!reserva.esFutura()) {
+            throw new ServicioException("Solo se pueden cancelar reservas futuras.");
+        }
+        reserva.setEstado(EstadoReserva.CANCELADA);
+        reservaDao.guardar(reserva);
     }
 
-    /**
-     * Primer recurso de la categoria que no choque con ninguna reserva ACTIVA
-     * en esa fecha y rango de horas. Optional.empty() si no hay ninguno libre.
-     */
     public Optional<Recurso> primerRecursoDisponible(String idCategoria, LocalDate fecha,
                                                      LocalTime inicio, LocalTime fin) {
-        // TODO: recursoDao.listarPorCategoria(...) y para cada uno preguntar estaDisponible(...)
-        return Optional.empty();
+        return primerRecursoDisponible(idCategoria, fecha, inicio, fin, List.of());
     }
 
-    /**
-     * Un recurso esta disponible si NINGUNA reserva ACTIVA de esa fecha que lo
-     * tenga asignado se traslapa con el rango [inicio, fin).
-     * Regla de traslape:  inicio < otra.horaFin  &&  otra.horaInicio < fin
-     */
+    private Optional<Recurso> primerRecursoDisponible(String idCategoria, LocalDate fecha,
+                                                      LocalTime inicio, LocalTime fin,
+                                                      List<String> yaAsignados) {
+        return recursoDao.listarPorCategoria(idCategoria).stream()
+                .filter(r -> !yaAsignados.contains(r.getId()))
+                .filter(r -> estaDisponible(r.getId(), fecha, inicio, fin))
+                .findFirst();
+    }
+
     public boolean estaDisponible(String idRecurso, LocalDate fecha, LocalTime inicio, LocalTime fin) {
-        // TODO
-        return false;
+        return reservaDao.listarActivasPorFecha(fecha).stream()
+                .filter(r -> r.usaRecurso(idRecurso))
+                .noneMatch(r -> r.chocaCon(fecha, inicio, fin));
     }
 
-    /**
-     * Validaciones del formulario. Lanza ServicioException con el mensaje exacto
-     * que se le va a mostrar al usuario:
-     *  - actividad obligatoria
-     *  - fecha obligatoria y no anterior a hoy
-     *  - horaInicio y horaFin obligatorias, horaFin > horaInicio
-     *  - al menos una categoria seleccionada
-     */
     public void validar(DatosReserva datos) {
-        // TODO
+        if (datos == null) {
+            throw new ServicioException("No hay datos de reserva.");
+        }
+        Validador.requerido(datos.getActividad(), "Actividad");
+        if (datos.getFecha() == null) {
+            throw new ServicioException("El campo Fecha es obligatorio.");
+        }
+        if (datos.getFecha().isBefore(LocalDate.now())) {
+            throw new ServicioException("La fecha no puede ser anterior a hoy.");
+        }
+        if (datos.getHoraInicio() == null) {
+            throw new ServicioException("El campo Hora inicio es obligatorio.");
+        }
+        if (datos.getHoraFin() == null) {
+            throw new ServicioException("El campo Hora fin es obligatorio.");
+        }
+        if (!datos.getHoraFin().isAfter(datos.getHoraInicio())) {
+            throw new ServicioException("La hora de fin debe ser posterior a la hora de inicio.");
+        }
+        if (datos.getIdsCategorias() == null || datos.getIdsCategorias().isEmpty()) {
+            throw new ServicioException("Debe seleccionar al menos una categoria de recurso.");
+        }
+    }
+
+    private String descripcionCategoria(String idCategoria) {
+        return categoriaDao.buscarPorId(idCategoria)
+                .map(Categoria::getDescripcion)
+                .orElse(idCategoria);
     }
 }

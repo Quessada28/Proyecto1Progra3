@@ -1,38 +1,37 @@
 package cr.ac.una.util;
 
-/**
- * Ids autogenerados con el formato del enunciado: CAT-000003, RES-000001.
- * El consecutivo se saca del ultimo id que exista en el XML
- * (ver ultimoConsecutivo() en los DAO), no de un contador en memoria:
- * si no, al reiniciar el programa se repetirian los ids.
- */
 public class GeneradorId {
 
-    private static final String PREFIJO_CATEGORIA = "CAT-";
-    private static final String PREFIJO_RESERVA = "RES-";
+    public static final String PREFIJO_CATEGORIA = "CAT-";
+    public static final String PREFIJO_RESERVA = "RES-";
 
     private GeneradorId() {
     }
 
-    /** Ej: siguiente("CAT-", 2) devuelve "CAT-000003". */
     public static String siguiente(String prefijo, int ultimoConsecutivo) {
-        // TODO: String.format("%s%06d", prefijo, ultimoConsecutivo + 1)
-        return null;
+        return String.format("%s%06d", prefijo, ultimoConsecutivo + 1);
     }
 
     public static String siguienteCategoria(int ultimoConsecutivo) {
-        // TODO
-        return null;
+        return siguiente(PREFIJO_CATEGORIA, ultimoConsecutivo);
     }
 
     public static String siguienteReserva(int ultimoConsecutivo) {
-        // TODO
-        return null;
+        return siguiente(PREFIJO_RESERVA, ultimoConsecutivo);
     }
 
-    /** De "CAT-000003" saca el 3. Devuelve 0 si el id no tiene el formato. */
     public static int consecutivoDe(String id) {
-        // TODO
-        return 0;
+        if (id == null) {
+            return 0;
+        }
+        int guion = id.indexOf('-');
+        if (guion < 0 || guion == id.length() - 1) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(id.substring(guion + 1));
+        } catch (NumberFormatException ignorada) {
+            return 0;
+        }
     }
 }

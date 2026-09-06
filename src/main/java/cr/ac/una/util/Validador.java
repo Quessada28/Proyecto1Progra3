@@ -1,33 +1,50 @@
 package cr.ac.una.util;
 
-/**
- * Validaciones basicas y reutilizables. La regla del enunciado es
- * "todos los datos deberan validarse y reportar adecuadamente cualquier error",
- * y eso se revisa en la defensa: conviene que los mensajes salgan de un solo lugar.
- */
+import cr.ac.una.logica.ServicioException;
+
 public class Validador {
+
+    private static final String SEPARADORES_TELEFONO = " -()+";
 
     private Validador() {
     }
 
     public static boolean vacio(String texto) {
-        // TODO: null, "" o solo espacios
-        return false;
+        return texto == null || texto.isBlank();
     }
 
-    /** Lanza ServicioException con el mensaje si el texto viene vacio. */
     public static void requerido(String texto, String nombreCampo) {
-        // TODO
+        if (vacio(texto)) {
+            throw new ServicioException("El campo " + nombreCampo + " es obligatorio.");
+        }
     }
 
     public static boolean esNumero(String texto) {
-        // TODO
-        return false;
+        if (vacio(texto)) {
+            return false;
+        }
+        return texto.trim().chars().allMatch(Character::isDigit);
     }
 
-    /** Telefono: solo digitos, entre 8 y 12 caracteres. */
     public static boolean esTelefono(String texto) {
-        // TODO
-        return false;
+        if (vacio(texto)) {
+            return false;
+        }
+        StringBuilder limpio = new StringBuilder();
+        for (char caracter : texto.toCharArray()) {
+            if (Character.isDigit(caracter)) {
+                limpio.append(caracter);
+            } else if (!SEPARADORES_TELEFONO.contains(String.valueOf(caracter))) {
+                return false;
+            }
+        }
+        return limpio.length() >= 4 && limpio.length() <= 15;
+    }
+
+    public static void telefonoValido(String texto, String nombreCampo) {
+        requerido(texto, nombreCampo);
+        if (!esTelefono(texto)) {
+            throw new ServicioException("El campo " + nombreCampo + " debe ser un numero de telefono valido.");
+        }
     }
 }

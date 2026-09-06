@@ -1,64 +1,97 @@
 package cr.ac.una.vista;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 
-/**
- * VISTA del login (funcionalidad 1). Es la primera ventana que se abre.
- *
- * REGLA DEL PATRON MVC: la vista SOLO arma y muestra componentes.
- * No valida, no lee XML y no sabe que es un Usuario. Todo eso lo hace
- * LoginControlador, que se suscribe a los botones con addActionListener.
- *
- * Como armarla (estilo visto en clase, Swing a mano):
- *   setTitle("SISTEMA DE RESERVAS"); setSize(...); setLocationRelativeTo(null);
- *   setDefaultCloseOperation(EXIT_ON_CLOSE);
- *   un JPanel con GridBagLayout para las etiquetas ID / Clave
- *   y un JPanel con FlowLayout para los tres botones.
- */
 public class LoginView extends JFrame {
 
-    private JTextField txtId;
-    private JPasswordField txtClave;
-    private JButton btnIngresar;
-    private JButton btnCancelar;
-    private JButton btnCambiar;
+    private final JTextField txtId = ComponentesUI.campo(16);
+    private final JPasswordField txtClave = new JPasswordField(16);
+    private final JButton btnIngresar = ComponentesUI.boton("Ingresar");
+    private final JButton btnCancelar = ComponentesUI.boton("Cancelar");
+    private final JButton btnCambiar = ComponentesUI.boton("Cambiar");
 
     public LoginView() {
-        // TODO: configurar la ventana y llamar a inicializarComponentes()
+        setTitle("SISTEMA DE RESERVAS");
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setResizable(false);
+        inicializarComponentes();
+        pack();
+        setLocationRelativeTo(null);
     }
 
-    /** Crea los componentes y los acomoda en la ventana. */
     private void inicializarComponentes() {
-        // TODO
-    }
+        setLayout(new BorderLayout(0, 8));
 
-    // ---- Lo que el controlador necesita LEER del formulario ----
+        JLabel titulo = new JLabel("Ingreso al sistema", SwingConstants.CENTER);
+        titulo.setFont(titulo.getFont().deriveFont(Font.BOLD, 16f));
+        titulo.setBorder(BorderFactory.createEmptyBorder(14, 10, 4, 10));
+        add(titulo, BorderLayout.NORTH);
+
+        JPanel formulario = new JPanel(new java.awt.GridBagLayout());
+        formulario.setBorder(BorderFactory.createEmptyBorder(6, 20, 6, 20));
+        ComponentesUI.agregar(formulario, ComponentesUI.etiqueta("ID"), 0, 0);
+        ComponentesUI.agregar(formulario, txtId, 1, 0);
+        ComponentesUI.agregar(formulario, ComponentesUI.etiqueta("Clave"), 0, 1);
+        ComponentesUI.agregar(formulario, txtClave, 1, 1);
+        add(formulario, BorderLayout.CENTER);
+
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 10));
+        botones.add(btnIngresar);
+        botones.add(btnCancelar);
+        botones.add(btnCambiar);
+        add(botones, BorderLayout.SOUTH);
+
+        getRootPane().setDefaultButton(btnIngresar);
+        setPreferredSize(new Dimension(360, 210));
+    }
 
     public String getId() {
-        // TODO: txtId.getText().trim()
-        return null;
+        return txtId.getText().trim();
     }
 
     public String getClave() {
-        // TODO: new String(txtClave.getPassword())
-        return null;
+        return new String(txtClave.getPassword());
     }
 
-    // ---- Lo que el controlador necesita ESCRIBIR en el formulario ----
-
-    /** Deja los dos campos en blanco y el foco en el id (despues de un intento fallido). */
     public void limpiar() {
-        // TODO
+        txtId.setText("");
+        txtClave.setText("");
+        txtId.requestFocusInWindow();
     }
 
-    /** Cuadro de dialogo de error: JOptionPane.showMessageDialog(this, mensaje, ...). */
+    public void limpiarClave() {
+        txtClave.setText("");
+        txtClave.requestFocusInWindow();
+    }
+
     public void mostrarError(String mensaje) {
-        // TODO
+        ComponentesUI.error(this, mensaje);
     }
 
-    // ---- Enganche de los botones (los llama el controlador) ----
+    public void mostrarInfo(String mensaje) {
+        ComponentesUI.info(this, mensaje);
+    }
 
-    public JButton getBtnIngresar() { return btnIngresar; }
-    public JButton getBtnCancelar() { return btnCancelar; }
-    public JButton getBtnCambiar() { return btnCambiar; }
+    public JButton getBtnIngresar() {
+        return btnIngresar;
+    }
+
+    public JButton getBtnCancelar() {
+        return btnCancelar;
+    }
+
+    public JButton getBtnCambiar() {
+        return btnCambiar;
+    }
 }

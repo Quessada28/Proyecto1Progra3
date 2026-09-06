@@ -1,73 +1,130 @@
 package cr.ac.una.logica;
 
+import cr.ac.una.datos.FuncionarioXmlDao;
 import cr.ac.una.datos.RecursoXmlDao;
 import cr.ac.una.datos.ReservaXmlDao;
+import cr.ac.una.modelo.Funcionario;
 import cr.ac.una.modelo.Recurso;
+import cr.ac.una.modelo.Reserva;
+import cr.ac.una.util.Formatos;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Funcionalidades 6 y 7: las dos matrices.
- *
- * La idea es que el servicio devuelva la matriz YA ARMADA (String[][]) y que
- * la vista solo se la entregue a un DefaultTableModel. Asi la logica de
- * "que va en cada celda" queda fuera de la interfaz.
- */
 public class CalendarioService {
 
-    /** Hora en que arranca la primera fila de las matrices. */
     public static final LocalTime HORA_INICIO = LocalTime.of(6, 0);
-    /** Hora en que termina la ultima fila. */
     public static final LocalTime HORA_FIN = LocalTime.of(22, 0);
+    public static final int DIAS_SEMANA = 7;
+
+    private static final DateTimeFormatter ENCABEZADO_DIA =
+            DateTimeFormatter.ofPattern("EEE yyyy-MM-dd", Formatos.ESPANOL);
 
     private final ReservaXmlDao reservaDao;
     private final RecursoXmlDao recursoDao;
+    private final FuncionarioXmlDao funcionarioDao;
 
     public CalendarioService() {
-        this.reservaDao = new ReservaXmlDao();
-        this.recursoDao = new RecursoXmlDao();
+        this(new ReservaXmlDao(), new RecursoXmlDao(), new FuncionarioXmlDao());
     }
 
-    /** Columnas de la matriz de recursos: los recursos de la categoria escogida. */
+    public CalendarioService(ReservaXmlDao reservaDao, RecursoXmlDao recursoDao, FuncionarioXmlDao funcionarioDao) {
+        this.reservaDao = reservaDao;
+        this.recursoDao = recursoDao;
+        this.funcionarioDao = funcionarioDao;
+    }
+
+    public int cantidadFilas() {
+        return HORA_FIN.getHour() - HORA_INICIO.getHour();
+    }
+
     public List<Recurso> recursosDeCategoria(String idCategoria) {
-        // TODO
-        return null;
+        return recursoDao.listarPorCategoria(idCategoria);
     }
 
-    /**
-     * Funcionalidad 6. Matriz [hora][recurso].
-     * Columna 0 = la hora ("06:00"); las demas columnas, una por recurso.
-     * Celda ocupada = "actividad - nombre del funcionario"; libre = "".
-     */
-    public String[][] calendarioDeRecursos(LocalDate fecha, String idCategoria) {
-        // TODO: 1) traer reservas ACTIVAS de esa fecha
-        //       2) para cada hora entre HORA_INICIO y HORA_FIN y cada recurso,
-        //          buscar si alguna reserva lo tiene y ocupa esa hora
-        return null;
-    }
-
-    /** Encabezados de columna de la matriz anterior: "Hora" + descripcion de cada recurso. */
     public String[] columnasDeRecursos(String idCategoria) {
-        // TODO
-        return null;
+        List<Recurso> recursos = recursosDeCategoria(idCategoria);
+        String[] columnas = new String[recursos.size() + 1];
+        columnas[0] = "Hora";
+        for (int i = 0; i < recursos.size(); i++) {
+            columnas[i + 1] = recursos.get(i).getDescripcion();
+        }
+        return columnas;
     }
 
-    /**
-     * Funcionalidad 7. Matriz [hora][dia de la semana].
-     * Se recibe cualquier fecha y se calcula el lunes de esa semana
-     * (fechaReferencia.with(DayOfWeek.MONDAY)).
-     * Celda = "actividad (funcionario)" de todas las actividades de ese dia y hora.
-     */
-    public String[][] calendarioDeActividades(LocalDate fechaReferencia) {
-        // TODO
-        return null;
+    public String[][] calendarioDeRecursos(LocalDate fecha, String idCategoria) {
+        List<Recurso> recursos = recursosDeCategoria(idCategoria);
+        List<Reserva> reservas = reservaDao.listarActivasPorFecha(fecha);
+        String[][] matriz = new String[cantidadFilas()][recursos.size() + 1];
+
+        for (int fila = 0; fila < cantidadFilas(); fila++) {
+            LocalTime hora = HORA_INICIO.plusHours(fila);
+            matriz[fila][0] = Formatos.hora24(hora);
+            for (int columna = 0; columna < recursos.size(); columna++) {
+                matriz[fila][columna + 1] = celdaRecurso(reservas, recursos.get(columna), fecha, hora);
+            }
+        }
+        return matriz;
     }
 
-    /** Encabezados: "Hora", "lun 2026-08-03", ... "dom 2026-08-09". */
+    private String celdaRecurso(List<Reserva> reservas, Recurso recurso, LocalDate fecha, LocalTime hora) {
+        for (Reserva reserva : reservas) {
+            if (reserva.usaRecurso(recurso.getId()) && reserva.ocupaHora(fecha, hora)) {
+                return reserva.getActividad() + " - " + nombreFuncionario(reserva.getIdFuncionario());
+            }
+        }
+        return "";
+    }
+
+    public LocalDate lunesDeLaSemana(LocalDate fechaReferencia) {
+        return fechaReferencia.with(DayOfWeek.MONDAY);
+    }
+
     public String[] columnasDeActividades(LocalDate fechaReferencia) {
-        // TODO
-        return null;
+        LocalDate lunes = lunesDeLaSemana(fechaReferencia);
+        String[] columnas = new String[DIAS_SEMANA + 1];
+        columnas[0] = "Hora";
+        for (int i = 0; i < DIAS_SEMANA; i++) {
+            columnas[i + 1] = lunes.plusDays(i).format(ENCABEZADO_DIA);
+        }
+        return columnas;
+    }
+
+    public String[][] calendarioDeActividades(LocalDate fechaReferencia) {
+        LocalDate lunes = lunesDeLaSemana(fechaReferencia);
+        String[][] matriz = new String[cantidadFilas()][DIAS_SEMANA + 1];
+
+        for (int fila = 0; fila < cantidadFilas(); fila++) {
+            LocalTime hora = HORA_INICIO.plusHours(fila);
+            matriz[fila][0] = Formatos.hora24(hora);
+            for (int dia = 0; dia < DIAS_SEMANA; dia++) {
+                matriz[fila][dia + 1] = celdaActividades(lunes.plusDays(dia), hora);
+            }
+        }
+        return matriz;
+    }
+
+    private String celdaActividades(LocalDate dia, LocalTime hora) {
+        List<String> actividades = new ArrayList<>();
+        for (Reserva reserva : reservaDao.listarActivasPorFecha(dia)) {
+            if (reserva.ocupaHora(dia, hora)) {
+                String texto = reserva.getActividad()
+                        + " (" + nombreFuncionario(reserva.getIdFuncionario()) + ")";
+                if (!actividades.contains(texto)) {
+                    actividades.add(texto);
+                }
+            }
+        }
+        return String.join(" | ", actividades);
+    }
+
+    private String nombreFuncionario(String idFuncionario) {
+        return funcionarioDao.buscarPorId(idFuncionario)
+                .map(Funcionario::getNombre)
+                .orElse(idFuncionario);
     }
 }

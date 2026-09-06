@@ -1,3 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <categorias>
+    <categoria>
+        <id>CAT-000001</id>
+        <descripcion>Sala de Juntas</descripcion>
+    </categoria>
 </categorias>

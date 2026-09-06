@@ -1,50 +1,32 @@
 package cr.ac.una.datos;
 
+import cr.ac.una.modelo.Rol;
 import cr.ac.una.modelo.Usuario;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import java.util.List;
-import java.util.Optional;
+public class UsuarioXmlDao extends XmlDao<Usuario> {
 
-/**
- * Persistencia de usuarios en datos/usuarios.xml
- *
- * <usuarios>
- *   <usuario><id>admin</id><clave>admin</clave><rol>ADMIN</rol></usuario>
- * </usuarios>
- */
-public class UsuarioXmlDao implements Dao<Usuario> {
-
-    private static final String ARCHIVO = "usuarios.xml";
-    private static final String RAIZ = "usuarios";
-    private static final String NODO = "usuario";
-
-    @Override
-    public List<Usuario> listar() {
-        // TODO: abrir el documento, recorrer getElementsByTagName(NODO) y mapear cada nodo
-        return null;
+    public UsuarioXmlDao() {
+        super("usuarios.xml", "usuarios", "usuario");
     }
 
     @Override
-    public Optional<Usuario> buscarPorId(String id) {
-        // TODO
-        return Optional.empty();
+    protected Usuario mapear(Element elemento) {
+        return new Usuario(
+                XmlUtil.texto(elemento, "id"),
+                XmlUtil.texto(elemento, "clave"),
+                Rol.desdeTexto(XmlUtil.texto(elemento, "rol")));
     }
 
     @Override
-    public void guardar(Usuario usuario) {
-        // TODO: si ya existe el nodo con ese id -> reemplazarlo, si no -> agregarlo.
-        //       Al final XmlUtil.guardar(doc, ARCHIVO)
+    protected void escribir(Document doc, Element destino, Usuario usuario) {
+        XmlUtil.agregarHijo(doc, destino, "clave", usuario.getClave());
+        XmlUtil.agregarHijo(doc, destino, "rol", usuario.getRol().name());
     }
 
     @Override
-    public void eliminar(String id) {
-        // TODO
-    }
-
-    /** Element del DOM -> objeto Usuario */
-    private Usuario mapear(Element e) {
-        // TODO
-        return null;
+    protected String idDe(Usuario usuario) {
+        return usuario.getId();
     }
 }

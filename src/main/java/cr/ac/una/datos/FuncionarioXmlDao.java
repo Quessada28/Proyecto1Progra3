@@ -1,54 +1,45 @@
 package cr.ac.una.datos;
 
 import cr.ac.una.modelo.Funcionario;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
-/**
- * Persistencia en datos/funcionarios.xml
- *
- * <funcionarios>
- *   <funcionario><id>111</id><nombre>Juan Perez</nombre><telefono>3323</telefono></funcionario>
- * </funcionarios>
- */
-public class FuncionarioXmlDao implements Dao<Funcionario> {
+public class FuncionarioXmlDao extends XmlDao<Funcionario> {
 
-    private static final String ARCHIVO = "funcionarios.xml";
-    private static final String RAIZ = "funcionarios";
-    private static final String NODO = "funcionario";
-
-    @Override
-    public List<Funcionario> listar() {
-        // TODO
-        return null;
+    public FuncionarioXmlDao() {
+        super("funcionarios.xml", "funcionarios", "funcionario");
     }
 
     @Override
-    public Optional<Funcionario> buscarPorId(String id) {
-        // TODO
-        return Optional.empty();
+    protected Funcionario mapear(Element elemento) {
+        return new Funcionario(
+                XmlUtil.texto(elemento, "id"),
+                XmlUtil.texto(elemento, "nombre"),
+                XmlUtil.texto(elemento, "telefono"));
     }
 
     @Override
-    public void guardar(Funcionario funcionario) {
-        // TODO
+    protected void escribir(Document doc, Element destino, Funcionario funcionario) {
+        XmlUtil.agregarHijo(doc, destino, "nombre", funcionario.getNombre());
+        XmlUtil.agregarHijo(doc, destino, "telefono", funcionario.getTelefono());
     }
 
     @Override
-    public void eliminar(String id) {
-        // TODO
+    protected String idDe(Funcionario funcionario) {
+        return funcionario.getId();
     }
 
-    /** Busqueda por nombre (contiene, sin distinguir mayusculas) - funcionalidad 3. */
     public List<Funcionario> buscarPorNombre(String texto) {
-        // TODO
-        return null;
-    }
-
-    private Funcionario mapear(Element e) {
-        // TODO
-        return null;
+        if (texto == null || texto.isBlank()) {
+            return listar();
+        }
+        String buscado = texto.trim().toLowerCase();
+        return listar().stream()
+                .filter(f -> f.getNombre() != null
+                        && f.getNombre().toLowerCase().contains(buscado))
+                .collect(Collectors.toList());
     }
 }

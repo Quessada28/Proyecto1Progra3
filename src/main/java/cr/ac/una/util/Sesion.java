@@ -1,12 +1,8 @@
 package cr.ac.una.util;
 
+import cr.ac.una.modelo.Rol;
 import cr.ac.una.modelo.Usuario;
 
-/**
- * Guarda el usuario que esta logueado. Se llena en LoginControlador y lo
- * consultan las demas pantallas para saber que se puede mostrar
- * (por ejemplo, la pestana Funcionarios solo si es ADMIN).
- */
 public class Sesion {
 
     private static Usuario usuarioActual;
@@ -19,15 +15,22 @@ public class Sesion {
     }
 
     public static void iniciar(Usuario usuario) {
-        // TODO
+        usuarioActual = usuario;
     }
 
     public static void cerrar() {
-        // TODO
+        usuarioActual = null;
+    }
+
+    public static boolean haySesion() {
+        return usuarioActual != null;
     }
 
     public static boolean esAdministrador() {
-        // TODO
-        return false;
+        return usuarioActual != null && usuarioActual.getRol() == Rol.ADMIN;
+    }
+
+    public static String idUsuarioActual() {
+        return usuarioActual == null ? null : usuarioActual.getId();
     }
 }

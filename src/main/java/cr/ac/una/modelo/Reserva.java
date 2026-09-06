@@ -1,15 +1,12 @@
 package cr.ac.una.modelo;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-/**
- * Reserva de recursos para una actividad (funcionalidad 2).
- * Guarda los ids de los recursos YA ASIGNADOS (uno por cada categoria pedida),
- * no las categorias: eso permite liberar exactamente esos recursos al cancelar.
- * El id es autogenerado con formato RES-000001.
- */
 public class Reserva {
 
     private String id;
@@ -18,8 +15,8 @@ public class Reserva {
     private LocalDate fecha;
     private LocalTime horaInicio;
     private LocalTime horaFin;
-    private List<String> idsRecursos;
-    private EstadoReserva estado;
+    private List<String> idsRecursos = new ArrayList<>();
+    private EstadoReserva estado = EstadoReserva.ACTIVA;
 
     public Reserva() {
     }
@@ -27,7 +24,14 @@ public class Reserva {
     public Reserva(String id, String idFuncionario, String actividad,
                    LocalDate fecha, LocalTime horaInicio, LocalTime horaFin,
                    List<String> idsRecursos, EstadoReserva estado) {
-        // TODO
+        this.id = id;
+        this.idFuncionario = idFuncionario;
+        this.actividad = actividad;
+        this.fecha = fecha;
+        this.horaInicio = horaInicio;
+        this.horaFin = horaFin;
+        this.idsRecursos = idsRecursos == null ? new ArrayList<>() : new ArrayList<>(idsRecursos);
+        this.estado = estado == null ? EstadoReserva.ACTIVA : estado;
     }
 
     public String getId() { return id; }
@@ -45,32 +49,65 @@ public class Reserva {
     public void setFecha(LocalDate fecha) { this.fecha = fecha; }
     public void setHoraInicio(LocalTime horaInicio) { this.horaInicio = horaInicio; }
     public void setHoraFin(LocalTime horaFin) { this.horaFin = horaFin; }
-    public void setIdsRecursos(List<String> idsRecursos) { this.idsRecursos = idsRecursos; }
     public void setEstado(EstadoReserva estado) { this.estado = estado; }
 
-    /**
-     * Indica si esta reserva ocupa la hora indicada de esa fecha.
-     * Se usa en la calendarizacion (funcionalidad 6 y 7) y para detectar choques.
-     * Regla sugerida: ocupa la hora H si  horaInicio <= H  &&  H < horaFin.
-     */
+    public void setIdsRecursos(List<String> idsRecursos) {
+        this.idsRecursos = idsRecursos == null ? new ArrayList<>() : new ArrayList<>(idsRecursos);
+    }
+
+    public boolean estaActiva() {
+        return estado == EstadoReserva.ACTIVA;
+    }
+
+    public boolean usaRecurso(String idRecurso) {
+        return idsRecursos != null && idsRecursos.contains(idRecurso);
+    }
+
     public boolean ocupaHora(LocalDate dia, LocalTime hora) {
-        // TODO
-        return false;
+        if (!estaActiva() || fecha == null || !fecha.equals(dia)) {
+            return false;
+        }
+        if (horaInicio == null || horaFin == null || hora == null) {
+            return false;
+        }
+        return !hora.isBefore(horaInicio) && hora.isBefore(horaFin);
     }
 
-    /**
-     * Indica si esta reserva se traslapa en el tiempo con el rango recibido.
-     * Regla sugerida: hay traslape si  inicio < this.horaFin  &&  this.horaInicio < fin
-     * (y ademas es la misma fecha y la reserva esta ACTIVA).
-     */
     public boolean chocaCon(LocalDate dia, LocalTime inicio, LocalTime fin) {
-        // TODO
-        return false;
+        if (!estaActiva() || fecha == null || !fecha.equals(dia)) {
+            return false;
+        }
+        if (horaInicio == null || horaFin == null || inicio == null || fin == null) {
+            return false;
+        }
+        return inicio.isBefore(horaFin) && horaInicio.isBefore(fin);
     }
 
-    /** Reserva cuya fecha/hora de inicio aun no ha pasado (solo esas se pueden cancelar). */
     public boolean esFutura() {
-        // TODO
-        return false;
+        if (fecha == null || horaInicio == null) {
+            return false;
+        }
+        return LocalDateTime.of(fecha, horaInicio).isAfter(LocalDateTime.now());
+    }
+
+    @Override
+    public boolean equals(Object otro) {
+        if (this == otro) {
+            return true;
+        }
+        if (!(otro instanceof Reserva)) {
+            return false;
+        }
+        return Objects.equals(id, ((Reserva) otro).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return actividad == null ? id : actividad;
     }
 }

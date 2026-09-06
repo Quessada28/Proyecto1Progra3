@@ -1,31 +1,16 @@
 package cr.ac.una.controlador;
 
+import cr.ac.una.logica.ServicioException;
 import cr.ac.una.logica.UsuarioService;
+import cr.ac.una.modelo.Usuario;
+import cr.ac.una.util.Sesion;
+import cr.ac.una.vista.CambiarClaveView;
 import cr.ac.una.vista.LoginView;
 
+import javax.swing.JOptionPane;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-/**
- * CONTROLADOR del login (funcionalidad 1).
- *
- * ASI FUNCIONA EL MVC QUE PIDE EL ENUNCIADO, y todos los controladores de
- * este proyecto siguen el mismo molde:
- *
- *   1. El controlador recibe la VISTA y el SERVICIO en el constructor.
- *   2. En el constructor se suscribe a los botones de la vista
- *      (vista.getBtnIngresar().addActionListener(this)).
- *   3. Cuando cae un evento: lee los datos de la vista, llama al servicio,
- *      atrapa ServicioException y le pide a la vista que muestre el resultado.
- *
- * La vista nunca llama al servicio y el servicio nunca abre un JOptionPane.
- *
- * FLUJO DE ingresar():
- *   Usuario u = usuarioService.autenticar(id, clave);
- *   Sesion.iniciar(u);
- *   vista.dispose();
- *   new PrincipalControlador().mostrar();   // abre la ventana con las pestanas
- */
 public class LoginControlador implements ActionListener {
 
     private final LoginView vista;
@@ -34,25 +19,58 @@ public class LoginControlador implements ActionListener {
     public LoginControlador(LoginView vista, UsuarioService usuarioService) {
         this.vista = vista;
         this.usuarioService = usuarioService;
-        // TODO: registrar los listeners de los tres botones
+        this.vista.getBtnIngresar().addActionListener(this);
+        this.vista.getBtnCancelar().addActionListener(this);
+        this.vista.getBtnCambiar().addActionListener(this);
+    }
+
+    public void mostrar() {
+        vista.setVisible(true);
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
-        // TODO: segun e.getSource() llamar a ingresar(), cambiarClave() o cancelar()
+    public void actionPerformed(ActionEvent evento) {
+        Object origen = evento.getSource();
+        if (origen == vista.getBtnIngresar()) {
+            ingresar();
+        } else if (origen == vista.getBtnCambiar()) {
+            cambiarClave();
+        } else if (origen == vista.getBtnCancelar()) {
+            cancelar();
+        }
     }
 
-    /** Autentica y, si todo bien, abre la ventana principal segun el rol. */
     private void ingresar() {
-        // TODO
+        try {
+            Usuario usuario = usuarioService.autenticar(vista.getId(), vista.getClave());
+            Sesion.iniciar(usuario);
+            vista.dispose();
+            new PrincipalControlador().mostrar();
+        } catch (ServicioException e) {
+            vista.mostrarError(e.getMessage());
+            vista.limpiarClave();
+        }
     }
 
-    /** Abre el dialogo de cambio de clave sin haber entrado al sistema. */
     private void cambiarClave() {
-        // TODO: pide el id primero (no hay sesion todavia) y abre CambiarClaveView
+        String id = vista.getId();
+        if (id.isEmpty()) {
+            id = JOptionPane.showInputDialog(vista, "Digite su ID de usuario:",
+                    "Cambiar clave", JOptionPane.QUESTION_MESSAGE);
+        }
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        if (usuarioService.buscar(id.trim()).isEmpty()) {
+            vista.mostrarError("El usuario indicado no existe.");
+            return;
+        }
+        CambiarClaveView dialogo = new CambiarClaveView(vista);
+        new CambiarClaveControlador(dialogo, usuarioService, id.trim()).mostrar();
     }
 
     private void cancelar() {
-        // TODO: System.exit(0)
+        vista.dispose();
+        System.exit(0);
     }
 }

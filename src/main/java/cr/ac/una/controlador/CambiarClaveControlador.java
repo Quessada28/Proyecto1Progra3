@@ -1,17 +1,9 @@
 package cr.ac.una.controlador;
 
+import cr.ac.una.logica.ServicioException;
 import cr.ac.una.logica.UsuarioService;
 import cr.ac.una.vista.CambiarClaveView;
 
-/**
- * CONTROLADOR del cambio de clave (funcionalidad 1).
- *
- * Validaciones que le tocan a ESTE controlador (no al servicio):
- *   - los tres campos vienen llenos
- *   - clave nueva == confirmacion
- * El resto (que la clave actual sea la correcta) lo verifica
- * UsuarioService.cambiarClave(...), que lanza ServicioException si no.
- */
 public class CambiarClaveControlador {
 
     private final CambiarClaveView vista;
@@ -22,19 +14,38 @@ public class CambiarClaveControlador {
         this.vista = vista;
         this.usuarioService = usuarioService;
         this.idUsuario = idUsuario;
-        // TODO: registrar listeners de Aceptar y Cancelar
+        this.vista.getBtnAceptar().addActionListener(e -> aceptar());
+        this.vista.getBtnCancelar().addActionListener(e -> cancelar());
     }
 
-    /** Muestra el dialogo modal. */
     public void mostrar() {
-        // TODO: vista.setVisible(true)
+        vista.setVisible(true);
     }
 
     private void aceptar() {
-        // TODO
+        String actual = vista.getClaveActual();
+        String nueva = vista.getClaveNueva();
+        String confirmacion = vista.getClaveNuevaConfirmacion();
+
+        if (actual.isBlank() || nueva.isBlank() || confirmacion.isBlank()) {
+            vista.mostrarError("Debe llenar los tres campos.");
+            return;
+        }
+        if (!nueva.equals(confirmacion)) {
+            vista.mostrarError("La clave nueva y su confirmacion no coinciden.");
+            return;
+        }
+        try {
+            usuarioService.cambiarClave(idUsuario, actual, nueva);
+            vista.mostrarInfo("La clave se cambio correctamente.");
+            vista.dispose();
+        } catch (ServicioException e) {
+            vista.mostrarError(e.getMessage());
+            vista.limpiar();
+        }
     }
 
     private void cancelar() {
-        // TODO: vista.dispose()
+        vista.dispose();
     }
 }

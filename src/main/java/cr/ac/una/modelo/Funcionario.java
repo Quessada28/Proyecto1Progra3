@@ -1,9 +1,7 @@
 package cr.ac.una.modelo;
 
-/**
- * Funcionario de la organizacion (funcionalidad 3).
- * El id del funcionario es el mismo id de su Usuario.
- */
+import java.util.Objects;
+
 public class Funcionario {
 
     private String id;
@@ -14,7 +12,9 @@ public class Funcionario {
     }
 
     public Funcionario(String id, String nombre, String telefono) {
-        // TODO: asignar los atributos
+        this.id = id;
+        this.nombre = nombre;
+        this.telefono = telefono;
     }
 
     public String getId() { return id; }
@@ -26,8 +26,23 @@ public class Funcionario {
     public void setTelefono(String telefono) { this.telefono = telefono; }
 
     @Override
+    public boolean equals(Object otro) {
+        if (this == otro) {
+            return true;
+        }
+        if (!(otro instanceof Funcionario)) {
+            return false;
+        }
+        return Objects.equals(id, ((Funcionario) otro).id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
     public String toString() {
-        // TODO: util para mostrarlo en combos/tablas
-        return null;
+        return nombre == null ? id : nombre;
     }
 }
