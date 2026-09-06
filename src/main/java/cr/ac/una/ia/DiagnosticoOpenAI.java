@@ -11,17 +11,19 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-public class DiagnosticoGemini {
+public class DiagnosticoOpenAI {
 
-    private static final String LISTADO =
-            "https://generativelanguage.googleapis.com/v1beta/models";
+    private static final String LISTADO = "https://api.openai.com/v1/models";
 
     public static void main(String[] args) throws Exception {
-        String llave = System.getenv(ExtractorReservaGemini.VARIABLE_LLAVE);
+        String llave = System.getenv(ExtractorReservaOpenAI.VARIABLE_LLAVE);
         if (llave == null || llave.isBlank()) {
             System.out.println("No hay llave. Defina la variable de ambiente "
-                    + ExtractorReservaGemini.VARIABLE_LLAVE);
+                    + ExtractorReservaOpenAI.VARIABLE_LLAVE);
             return;
         }
 
@@ -31,7 +33,7 @@ public class DiagnosticoGemini {
 
         HttpRequest peticion = HttpRequest.newBuilder()
                 .uri(URI.create(LISTADO))
-                .header("x-goog-api-key", llave)
+                .header("Authorization", "Bearer " + llave)
                 .timeout(Duration.ofSeconds(30))
                 .GET()
                 .build();
@@ -43,45 +45,40 @@ public class DiagnosticoGemini {
             System.out.println("La API respondio con el codigo " + respuesta.statusCode());
             System.out.println(respuesta.body());
             System.out.println();
-            System.out.println("Si aqui tambien sale 403, el bloqueo es de la cuenta o del");
-            System.out.println("proyecto de Google, no del programa.");
+            if (respuesta.statusCode() == 401) {
+                System.out.println("401 significa que la llave es invalida o fue revocada.");
+            }
+            if (respuesta.statusCode() == 429) {
+                System.out.println("429 significa que la cuenta no tiene creditos disponibles.");
+            }
             return;
         }
 
         JsonArray modelos = JsonParser.parseString(respuesta.body())
-                .getAsJsonObject().getAsJsonArray("models");
+                .getAsJsonObject().getAsJsonArray("data");
 
-        System.out.println("Modelos que aceptan generateContent:");
-        int encontrados = 0;
+        List<String> nombres = new ArrayList<>();
         for (JsonElement elemento : modelos) {
             JsonObject modelo = elemento.getAsJsonObject();
-            if (!soportaGenerateContent(modelo)) {
-                continue;
+            String id = modelo.get("id").getAsString();
+            if (id.startsWith("gpt-")) {
+                nombres.add(id);
             }
-            String nombre = modelo.get("name").getAsString().replace("models/", "");
+        }
+        Collections.sort(nombres);
+
+        System.out.println("Modelos GPT disponibles para esta llave:");
+        for (String nombre : nombres) {
             System.out.println("  " + nombre);
-            encontrados++;
         }
 
         System.out.println();
-        if (encontrados == 0) {
-            System.out.println("Ningun modelo disponible para esta llave.");
+        if (nombres.isEmpty()) {
+            System.out.println("Ningun modelo GPT disponible para esta llave.");
         } else {
-            System.out.println("Escoja uno y pongalo en la variable de ambiente "
-                    + ExtractorReservaGemini.VARIABLE_MODELO);
+            System.out.println("El programa usa " + new ExtractorReservaOpenAI().modelo()
+                    + ". Para cambiarlo, defina " + ExtractorReservaOpenAI.VARIABLE_MODELO);
         }
-    }
-
-    private static boolean soportaGenerateContent(JsonObject modelo) {
-        if (!modelo.has("supportedGenerationMethods")) {
-            return false;
-        }
-        for (JsonElement metodo : modelo.getAsJsonArray("supportedGenerationMethods")) {
-            if ("generateContent".equals(metodo.getAsString())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static String enmascarar(String llave) {

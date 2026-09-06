@@ -20,19 +20,18 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExtractorReservaGemini implements ExtractorReserva {
+public class ExtractorReservaOpenAI implements ExtractorReserva {
 
-    public static final String VARIABLE_LLAVE = "GEMINI_API_KEY";
-    public static final String VARIABLE_MODELO = "GEMINI_MODEL";
+    public static final String VARIABLE_LLAVE = "OPENAI_API_KEY";
+    public static final String VARIABLE_MODELO = "OPENAI_MODEL";
 
-    private static final String MODELO_POR_DEFECTO = "gemini-3.6-flash";
-    private static final String ENDPOINT =
-            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
+    private static final String MODELO_POR_DEFECTO = "gpt-4o-mini";
+    private static final String ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
     private final HttpClient cliente;
     private final Gson gson = new Gson();
 
-    public ExtractorReservaGemini() {
+    public ExtractorReservaOpenAI() {
         this.cliente = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -46,7 +45,7 @@ public class ExtractorReservaGemini implements ExtractorReserva {
         String llave = System.getenv(VARIABLE_LLAVE);
         if (llave == null || llave.isBlank()) {
             throw new ServicioException(
-                    "No hay llave de Gemini configurada. Defina la variable de ambiente "
+                    "No hay llave de OpenAI configurada. Defina la variable de ambiente "
                             + VARIABLE_LLAVE + " o llene el formulario a mano.");
         }
         return convertir(invocar(llave, construirPrompt(frase, categorias)), categorias);
@@ -75,12 +74,18 @@ public class ExtractorReservaGemini implements ExtractorReserva {
         return prompt.toString();
     }
 
+    String modelo() {
+        String configurado = System.getenv(VARIABLE_MODELO);
+        return configurado == null || configurado.isBlank()
+                ? MODELO_POR_DEFECTO : configurado.trim();
+    }
+
     private String invocar(String llave, String prompt) {
         try {
             HttpRequest peticion = HttpRequest.newBuilder()
-                    .uri(URI.create(String.format(ENDPOINT, modelo())))
+                    .uri(URI.create(ENDPOINT))
                     .header("Content-Type", "application/json")
-                    .header("x-goog-api-key", llave)
+                    .header("Authorization", "Bearer " + llave)
                     .timeout(Duration.ofSeconds(45))
                     .POST(HttpRequest.BodyPublishers.ofString(cuerpo(prompt), StandardCharsets.UTF_8))
                     .build();
@@ -89,7 +94,7 @@ public class ExtractorReservaGemini implements ExtractorReserva {
                     cliente.send(peticion, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
             if (respuesta.statusCode() != 200) {
-                throw new ServicioException("Gemini respondio con el codigo "
+                throw new ServicioException("OpenAI respondio con el codigo "
                         + respuesta.statusCode() + " usando el modelo " + modelo() + ".\n\n"
                         + detalleDelError(respuesta.body())
                         + "\n\nPuede llenar el formulario a mano.");
@@ -99,43 +104,39 @@ public class ExtractorReservaGemini implements ExtractorReserva {
             throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ServicioException("La consulta a Gemini fue interrumpida.");
+            throw new ServicioException("La consulta a OpenAI fue interrumpida.");
         } catch (Exception e) {
-            throw new ServicioException("No se pudo consultar a Gemini: " + e.getMessage()
+            throw new ServicioException("No se pudo consultar a OpenAI: " + e.getMessage()
                     + ". Puede llenar el formulario a mano.");
         }
     }
 
     private String cuerpo(String prompt) {
-        JsonObject parte = new JsonObject();
-        parte.addProperty("text", prompt);
+        JsonObject mensaje = new JsonObject();
+        mensaje.addProperty("role", "user");
+        mensaje.addProperty("content", prompt);
 
-        JsonArray partes = new JsonArray();
-        partes.add(parte);
+        JsonArray mensajes = new JsonArray();
+        mensajes.add(mensaje);
 
-        JsonObject contenido = new JsonObject();
-        contenido.add("parts", partes);
-
-        JsonArray contenidos = new JsonArray();
-        contenidos.add(contenido);
-
-        JsonObject configuracion = new JsonObject();
-        configuracion.addProperty("responseMimeType", "application/json");
-        configuracion.add("responseSchema", esquema());
-        configuracion.addProperty("temperature", 0);
+        JsonObject formato = new JsonObject();
+        formato.addProperty("type", "json_schema");
+        formato.add("json_schema", esquema());
 
         JsonObject raiz = new JsonObject();
-        raiz.add("contents", contenidos);
-        raiz.add("generationConfig", configuracion);
+        raiz.addProperty("model", modelo());
+        raiz.addProperty("temperature", 0);
+        raiz.add("messages", mensajes);
+        raiz.add("response_format", formato);
         return gson.toJson(raiz);
     }
 
     private JsonObject esquema() {
         JsonObject elementos = new JsonObject();
-        elementos.addProperty("type", "STRING");
+        elementos.addProperty("type", "string");
 
         JsonObject lista = new JsonObject();
-        lista.addProperty("type", "ARRAY");
+        lista.addProperty("type", "array");
         lista.add("items", elementos);
 
         JsonObject propiedades = new JsonObject();
@@ -145,23 +146,34 @@ public class ExtractorReservaGemini implements ExtractorReserva {
         propiedades.add("horaFin", cadenaNulable());
         propiedades.add("idsCategorias", lista);
 
+        JsonArray requeridos = new JsonArray();
+        requeridos.add("actividad");
+        requeridos.add("fecha");
+        requeridos.add("horaInicio");
+        requeridos.add("horaFin");
+        requeridos.add("idsCategorias");
+
+        JsonObject definicion = new JsonObject();
+        definicion.addProperty("type", "object");
+        definicion.add("properties", propiedades);
+        definicion.add("required", requeridos);
+        definicion.addProperty("additionalProperties", false);
+
         JsonObject esquema = new JsonObject();
-        esquema.addProperty("type", "OBJECT");
-        esquema.add("properties", propiedades);
+        esquema.addProperty("name", "datos_reserva");
+        esquema.addProperty("strict", true);
+        esquema.add("schema", definicion);
         return esquema;
     }
 
     private JsonObject cadenaNulable() {
-        JsonObject cadena = new JsonObject();
-        cadena.addProperty("type", "STRING");
-        cadena.addProperty("nullable", true);
-        return cadena;
-    }
+        JsonArray tipos = new JsonArray();
+        tipos.add("string");
+        tipos.add("null");
 
-    String modelo() {
-        String configurado = System.getenv(VARIABLE_MODELO);
-        return configurado == null || configurado.isBlank()
-                ? MODELO_POR_DEFECTO : configurado.trim();
+        JsonObject cadena = new JsonObject();
+        cadena.add("type", tipos);
+        return cadena;
     }
 
     private String detalleDelError(String cuerpo) {
@@ -175,22 +187,24 @@ public class ExtractorReservaGemini implements ExtractorReserva {
                 return error.get("message").getAsString();
             }
         } catch (RuntimeException ignorada) {
-            return cuerpo.length() > 400 ? cuerpo.substring(0, 400) : cuerpo;
+            return recortar(cuerpo);
         }
-        return cuerpo.length() > 400 ? cuerpo.substring(0, 400) : cuerpo;
+        return recortar(cuerpo);
+    }
+
+    private String recortar(String texto) {
+        return texto.length() > 400 ? texto.substring(0, 400) : texto;
     }
 
     private String textoDeLaRespuesta(String respuestaJson) {
         JsonObject raiz = JsonParser.parseString(respuestaJson).getAsJsonObject();
-        JsonArray candidatos = raiz.getAsJsonArray("candidates");
-        if (candidatos == null || candidatos.isEmpty()) {
-            throw new ServicioException("Gemini no devolvio ningun resultado.");
+        JsonArray opciones = raiz.getAsJsonArray("choices");
+        if (opciones == null || opciones.isEmpty()) {
+            throw new ServicioException("OpenAI no devolvio ningun resultado.");
         }
-        return candidatos.get(0).getAsJsonObject()
-                .getAsJsonObject("content")
-                .getAsJsonArray("parts")
-                .get(0).getAsJsonObject()
-                .get("text").getAsString();
+        return opciones.get(0).getAsJsonObject()
+                .getAsJsonObject("message")
+                .get("content").getAsString();
     }
 
     private DatosReserva convertir(String json, List<Categoria> categorias) {
