@@ -17,12 +17,12 @@ import java.util.Date;
 
 public class SelectorFecha extends JPanel {
 
-    private final JTextField txtFecha = new JTextField(14);
+    private final JTextField txtFecha = new JTextField(20);
     private final JButton btnCalendario = new JButton("...");
 
     public SelectorFecha() {
         super(new BorderLayout(4, 0));
-        txtFecha.setPreferredSize(new Dimension(150, 26));
+        txtFecha.setPreferredSize(new Dimension(195, 26));
         btnCalendario.setPreferredSize(new Dimension(34, 26));
         btnCalendario.setFocusPainted(false);
         btnCalendario.addActionListener(e -> abrirCalendario());
@@ -51,6 +51,7 @@ public class SelectorFecha extends JPanel {
 
     public void setFecha(LocalDate fecha) {
         txtFecha.setText(fecha == null ? "" : Formatos.fechaLarga(fecha));
+        txtFecha.setCaretPosition(0);
     }
 
     public void limpiar() {
