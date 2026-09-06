@@ -20,18 +20,18 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExtractorReservaOpenAI implements ExtractorReserva {
+public class ExtractorReservaGroq implements ExtractorReserva {
 
-    public static final String VARIABLE_LLAVE = "OPENAI_API_KEY";
-    public static final String VARIABLE_MODELO = "OPENAI_MODEL";
+    public static final String VARIABLE_LLAVE = "GROQ_API_KEY";
+    public static final String VARIABLE_MODELO = "GROQ_MODEL";
 
-    private static final String MODELO_POR_DEFECTO = "gpt-4o-mini";
-    private static final String ENDPOINT = "https://api.openai.com/v1/chat/completions";
+    private static final String MODELO_POR_DEFECTO = "llama-3.3-70b-versatile";
+    private static final String ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
     private final HttpClient cliente;
     private final Gson gson = new Gson();
 
-    public ExtractorReservaOpenAI() {
+    public ExtractorReservaGroq() {
         this.cliente = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -45,7 +45,7 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
         String llave = System.getenv(VARIABLE_LLAVE);
         if (llave == null || llave.isBlank()) {
             throw new ServicioException(
-                    "No hay llave de OpenAI configurada. Defina la variable de ambiente "
+                    "No hay llave de Groq configurada. Defina la variable de ambiente "
                             + VARIABLE_LLAVE + " o llene el formulario a mano.");
         }
         return convertir(invocar(llave, construirPrompt(frase, categorias)), categorias);
@@ -63,12 +63,21 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
                   .append(" descripcion=").append(categoria.getDescripcion())
                   .append("\n");
         }
-        prompt.append("\nReglas:\n")
+        prompt.append("\nResponde unicamente con un objeto JSON con esta forma exacta:\n")
+              .append("{\n")
+              .append("  \"actividad\": \"texto o null\",\n")
+              .append("  \"fecha\": \"yyyy-MM-dd o null\",\n")
+              .append("  \"horaInicio\": \"HH:mm o null\",\n")
+              .append("  \"horaFin\": \"HH:mm o null\",\n")
+              .append("  \"idsCategorias\": [\"id\", \"id\"]\n")
+              .append("}\n\n")
+              .append("Reglas:\n")
               .append("1. Devolve unicamente ids de categoria que aparezcan en la lista anterior.\n")
               .append("2. Si la frase no menciona un dato, devolve null en ese campo.\n")
               .append("3. La fecha va en formato ISO yyyy-MM-dd.\n")
               .append("4. Las horas van en formato ISO de 24 horas HH:mm.\n")
-              .append("5. La actividad es una descripcion corta, sin fechas ni horas.\n\n")
+              .append("5. La actividad es una descripcion corta, sin fechas ni horas.\n")
+              .append("6. No agregues texto fuera del JSON.\n\n")
               .append("Frase del usuario:\n")
               .append(frase);
         return prompt.toString();
@@ -81,37 +90,48 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
     }
 
     private String invocar(String llave, String prompt) {
+        HttpResponse<String> respuesta = enviar(llave, cuerpo(prompt, true));
+
+        if (respuesta.statusCode() == 400 && rechazaElEsquema(respuesta.body())) {
+            respuesta = enviar(llave, cuerpo(prompt, false));
+        }
+        if (respuesta.statusCode() != 200) {
+            throw new ServicioException("Groq respondio con el codigo "
+                    + respuesta.statusCode() + " usando el modelo " + modelo() + ".\n\n"
+                    + detalleDelError(respuesta.body())
+                    + "\n\nPuede llenar el formulario a mano.");
+        }
+        return textoDeLaRespuesta(respuesta.body());
+    }
+
+    private HttpResponse<String> enviar(String llave, String cuerpo) {
         try {
             HttpRequest peticion = HttpRequest.newBuilder()
                     .uri(URI.create(ENDPOINT))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + llave)
                     .timeout(Duration.ofSeconds(45))
-                    .POST(HttpRequest.BodyPublishers.ofString(cuerpo(prompt), StandardCharsets.UTF_8))
+                    .POST(HttpRequest.BodyPublishers.ofString(cuerpo, StandardCharsets.UTF_8))
                     .build();
-
-            HttpResponse<String> respuesta =
-                    cliente.send(peticion, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-            if (respuesta.statusCode() != 200) {
-                throw new ServicioException("OpenAI respondio con el codigo "
-                        + respuesta.statusCode() + " usando el modelo " + modelo() + ".\n\n"
-                        + detalleDelError(respuesta.body())
-                        + "\n\nPuede llenar el formulario a mano.");
-            }
-            return textoDeLaRespuesta(respuesta.body());
-        } catch (ServicioException e) {
-            throw e;
+            return cliente.send(peticion, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ServicioException("La consulta a OpenAI fue interrumpida.");
+            throw new ServicioException("La consulta a Groq fue interrumpida.");
         } catch (Exception e) {
-            throw new ServicioException("No se pudo consultar a OpenAI: " + e.getMessage()
+            throw new ServicioException("No se pudo consultar a Groq: " + e.getMessage()
                     + ". Puede llenar el formulario a mano.");
         }
     }
 
-    private String cuerpo(String prompt) {
+    private boolean rechazaElEsquema(String cuerpo) {
+        if (cuerpo == null) {
+            return false;
+        }
+        String texto = cuerpo.toLowerCase();
+        return texto.contains("json_schema") || texto.contains("response_format");
+    }
+
+    private String cuerpo(String prompt, boolean conEsquema) {
         JsonObject mensaje = new JsonObject();
         mensaje.addProperty("role", "user");
         mensaje.addProperty("content", prompt);
@@ -120,8 +140,12 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
         mensajes.add(mensaje);
 
         JsonObject formato = new JsonObject();
-        formato.addProperty("type", "json_schema");
-        formato.add("json_schema", esquema());
+        if (conEsquema) {
+            formato.addProperty("type", "json_schema");
+            formato.add("json_schema", esquema());
+        } else {
+            formato.addProperty("type", "json_object");
+        }
 
         JsonObject raiz = new JsonObject();
         raiz.addProperty("model", modelo());
@@ -200,7 +224,7 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
         JsonObject raiz = JsonParser.parseString(respuestaJson).getAsJsonObject();
         JsonArray opciones = raiz.getAsJsonArray("choices");
         if (opciones == null || opciones.isEmpty()) {
-            throw new ServicioException("OpenAI no devolvio ningun resultado.");
+            throw new ServicioException("Groq no devolvio ningun resultado.");
         }
         return opciones.get(0).getAsJsonObject()
                 .getAsJsonObject("message")
@@ -238,7 +262,10 @@ public class ExtractorReservaOpenAI implements ExtractorReserva {
             return null;
         }
         String valor = objeto.get(campo).getAsString();
-        return valor.isBlank() ? null : valor.trim();
+        if (valor.isBlank() || "null".equalsIgnoreCase(valor.trim())) {
+            return null;
+        }
+        return valor.trim();
     }
 
     private static LocalDate fecha(String texto) {

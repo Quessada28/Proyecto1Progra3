@@ -1,6 +1,6 @@
 package cr.ac.una.controlador;
 
-import cr.ac.una.ia.ExtractorReservaOpenAI;
+import cr.ac.una.ia.ExtractorReservaGroq;
 import cr.ac.una.logica.CalendarioService;
 import cr.ac.una.logica.CategoriaService;
 import cr.ac.una.logica.EstadisticaService;
@@ -84,7 +84,7 @@ public class PrincipalControlador {
         ReservasView reservas = new ReservasView();
         agregarPestana("Reservas", reservas,
                 new ReservasControlador(reservas, new ReservaService(), new CategoriaService(),
-                        new RecursoService(), new ExtractorReservaOpenAI()));
+                        new RecursoService(), new ExtractorReservaGroq()));
     }
 
     private void agregarPestanasComunes() {

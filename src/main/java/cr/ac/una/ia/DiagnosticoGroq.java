@@ -15,15 +15,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class DiagnosticoOpenAI {
+public class DiagnosticoGroq {
 
-    private static final String LISTADO = "https://api.openai.com/v1/models";
+    private static final String LISTADO = "https://api.groq.com/openai/v1/models";
 
     public static void main(String[] args) throws Exception {
-        String llave = System.getenv(ExtractorReservaOpenAI.VARIABLE_LLAVE);
+        String llave = System.getenv(ExtractorReservaGroq.VARIABLE_LLAVE);
         if (llave == null || llave.isBlank()) {
             System.out.println("No hay llave. Defina la variable de ambiente "
-                    + ExtractorReservaOpenAI.VARIABLE_LLAVE);
+                    + ExtractorReservaGroq.VARIABLE_LLAVE);
             return;
         }
 
@@ -49,7 +49,7 @@ public class DiagnosticoOpenAI {
                 System.out.println("401 significa que la llave es invalida o fue revocada.");
             }
             if (respuesta.statusCode() == 429) {
-                System.out.println("429 significa que la cuenta no tiene creditos disponibles.");
+                System.out.println("429 significa que se paso el limite de peticiones por minuto.");
             }
             return;
         }
@@ -60,24 +60,25 @@ public class DiagnosticoOpenAI {
         List<String> nombres = new ArrayList<>();
         for (JsonElement elemento : modelos) {
             JsonObject modelo = elemento.getAsJsonObject();
-            String id = modelo.get("id").getAsString();
-            if (id.startsWith("gpt-")) {
-                nombres.add(id);
+            if (modelo.has("id")) {
+                nombres.add(modelo.get("id").getAsString());
             }
         }
         Collections.sort(nombres);
 
-        System.out.println("Modelos GPT disponibles para esta llave:");
+        System.out.println("Modelos disponibles para esta llave:");
         for (String nombre : nombres) {
             System.out.println("  " + nombre);
         }
 
         System.out.println();
-        if (nombres.isEmpty()) {
-            System.out.println("Ningun modelo GPT disponible para esta llave.");
+        String actual = new ExtractorReservaGroq().modelo();
+        System.out.println("El programa usa " + actual);
+        if (!nombres.contains(actual)) {
+            System.out.println("ESE MODELO NO ESTA EN LA LISTA. Escoja uno de arriba y pongalo en "
+                    + ExtractorReservaGroq.VARIABLE_MODELO);
         } else {
-            System.out.println("El programa usa " + new ExtractorReservaOpenAI().modelo()
-                    + ". Para cambiarlo, defina " + ExtractorReservaOpenAI.VARIABLE_MODELO);
+            System.out.println("El modelo esta disponible. Todo listo.");
         }
     }
 
