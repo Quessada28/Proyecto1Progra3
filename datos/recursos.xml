@@ -1,8 +1,33 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <recursos>
     <recurso>
-        <id>SALA-1</id>
+        <id>34343</id>
         <idCategoria>CAT-000001</idCategoria>
-        <descripcion>AAA</descripcion>
+        <descripcion>Sala 1 primer piso</descripcion>
+    </recurso>
+    <recurso>
+        <id>34344</id>
+        <idCategoria>CAT-000001</idCategoria>
+        <descripcion>Sala 2 segundo piso</descripcion>
+    </recurso>
+    <recurso>
+        <id>238715</id>
+        <idCategoria>CAT-000002</idCategoria>
+        <descripcion>Laptop #238715</descripcion>
+    </recurso>
+    <recurso>
+        <id>45238</id>
+        <idCategoria>CAT-000002</idCategoria>
+        <descripcion>Laptop #45238</descripcion>
+    </recurso>
+    <recurso>
+        <id>452784</id>
+        <idCategoria>CAT-000003</idCategoria>
+        <descripcion>Sala de Juntas A</descripcion>
+    </recurso>
+    <recurso>
+        <id>452785</id>
+        <idCategoria>CAT-000003</idCategoria>
+        <descripcion>Sala de Juntas B</descripcion>
     </recurso>
 </recursos>

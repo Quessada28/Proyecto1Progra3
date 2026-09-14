@@ -58,17 +58,30 @@ public class DiagnosticoGroq {
                 .getAsJsonObject().getAsJsonArray("data");
 
         List<String> nombres = new ArrayList<>();
+        List<String> descartados = new ArrayList<>();
         for (JsonElement elemento : modelos) {
             JsonObject modelo = elemento.getAsJsonObject();
-            if (modelo.has("id")) {
-                nombres.add(modelo.get("id").getAsString());
+            if (!modelo.has("id")) {
+                continue;
+            }
+            String id = modelo.get("id").getAsString();
+            if (sirveParaTexto(id)) {
+                nombres.add(id);
+            } else {
+                descartados.add(id);
             }
         }
         Collections.sort(nombres);
+        Collections.sort(descartados);
 
-        System.out.println("Modelos disponibles para esta llave:");
+        System.out.println("Modelos que sirven para extraer la reserva:");
         for (String nombre : nombres) {
             System.out.println("  " + nombre);
+        }
+        if (!descartados.isEmpty()) {
+            System.out.println();
+            System.out.println("(Descartados por no ser de texto: "
+                    + String.join(", ", descartados) + ")");
         }
 
         System.out.println();
@@ -80,6 +93,14 @@ public class DiagnosticoGroq {
         } else {
             System.out.println("El modelo esta disponible. Todo listo.");
         }
+    }
+
+    private static boolean sirveParaTexto(String id) {
+        String texto = id.toLowerCase();
+        return !texto.contains("whisper")
+                && !texto.contains("tts")
+                && !texto.contains("guard")
+                && !texto.contains("embed");
     }
 
     private static String enmascarar(String llave) {

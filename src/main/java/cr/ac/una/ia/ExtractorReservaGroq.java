@@ -25,7 +25,7 @@ public class ExtractorReservaGroq implements ExtractorReserva {
     public static final String VARIABLE_LLAVE = "GROQ_API_KEY";
     public static final String VARIABLE_MODELO = "GROQ_MODEL";
 
-    private static final String MODELO_POR_DEFECTO = "llama-3.3-70b-versatile";
+    private static final String MODELO_POR_DEFECTO = "qwen/qwen3.8-27b";
     private static final String ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
     private final HttpClient cliente;

@@ -10,4 +10,14 @@
         <clave>111</clave>
         <rol>FUNCIONARIO</rol>
     </usuario>
+    <usuario>
+        <id>222</id>
+        <clave>222</clave>
+        <rol>FUNCIONARIO</rol>
+    </usuario>
+    <usuario>
+        <id>333</id>
+        <clave>333</clave>
+        <rol>FUNCIONARIO</rol>
+    </usuario>
 </usuarios>

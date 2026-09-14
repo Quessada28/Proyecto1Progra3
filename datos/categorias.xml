@@ -2,6 +2,14 @@
 <categorias>
     <categoria>
         <id>CAT-000001</id>
+        <descripcion>Sala para 10 personas</descripcion>
+    </categoria>
+    <categoria>
+        <id>CAT-000002</id>
+        <descripcion>Laptop windows</descripcion>
+    </categoria>
+    <categoria>
+        <id>CAT-000003</id>
         <descripcion>Sala de Juntas</descripcion>
     </categoria>
 </categorias>
